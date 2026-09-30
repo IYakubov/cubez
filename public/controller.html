@@ -246,6 +246,14 @@ socket.on('game_start',()=>{
 });
 socket.on('return_to_lobby',()=>{
   gameStarted=false;
+  answering=false;
+  clearInterval(answerTimerInterval);
+  isReady=false;
+  readyBtn.textContent='Ready Up';
+  readyBtn.classList.remove('done');
+  document.getElementById('lobby-status').textContent=
+    gameMode==='solo' ? 'Ready whenever you are!' : 'Ready up for the rematch!';
+  setTapCount(0);
   showScreen('lobby');
 });
 

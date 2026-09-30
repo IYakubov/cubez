@@ -9,17 +9,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@500;600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0a1220;
-  --panel:#111c30;
-  --panel2:#182741;
-  --border:#243a5e;
-  --accentA:#3fa9ff;
-  --accentB:#ff5d8f;
-  --cyan:#4fd1ff;
-  --good:#3ddc84;
-  --bad:#ff5d5d;
-  --text:#eaf1ff;
-  --textdim:#7f8fb3;
+  --bg:#ffffff;
+  --panel:#f4f6f9;
+  --panel2:#e9edf3;
+  --border:#d3dae5;
+  --accentA:#1e88e5;
+  --accentB:#e0367a;
+  --cyan:#0f8fc2;
+  --good:#1fae60;
+  --bad:#e04545;
+  --text:#1a2233;
+  --textdim:#66728a;
 }
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;user-select:none}
 body{display:flex;flex-direction:column}
@@ -49,7 +49,7 @@ canvas{display:block;position:absolute;top:0;left:0}
 
 /* ── CENTER HUD (non-blocking, sits above canvas during rounds) ── */
 #hud{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:50}
-.hud-phase{margin-top:26px;font-family:'Baloo 2',sans-serif;font-size:1.5rem;font-weight:800;color:var(--cyan);letter-spacing:.03em;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.4);opacity:0;transition:opacity .25s}
+.hud-phase{margin-top:26px;font-family:'Baloo 2',sans-serif;font-size:1.5rem;font-weight:800;color:var(--cyan);letter-spacing:.03em;text-align:center;opacity:0;transition:opacity .25s}
 .hud-phase.show{opacity:1}
 .hud-timerbar{margin-top:10px;width:min(70vw,420px);height:10px;border-radius:6px;background:var(--panel2);border:1px solid var(--border);overflow:hidden;opacity:0;transition:opacity .25s}
 .hud-timerbar.show{opacity:1}
@@ -74,14 +74,14 @@ canvas{display:block;position:absolute;top:0;left:0}
 .solo-hide{display:none !important}
 
 /* ── SCREENS ── */
-.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(10,18,32,.96);z-index:100;padding:20px}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(255,255,255,.97);z-index:100;padding:20px}
 .screen.hidden{display:none}
 .ov-tag{font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--cyan);background:var(--panel2);border:2px solid var(--border);border-radius:999px;padding:5px 16px;text-transform:uppercase}
 .screen-title{font-family:'Baloo 2',sans-serif;font-size:2.6rem;font-weight:800;color:var(--cyan);letter-spacing:.01em;text-align:center}
 .screen-sub{font-size:.85rem;color:var(--textdim);text-align:center;max-width:480px;line-height:1.6;font-weight:600}
 .btn-row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
-.net-btn{padding:16px 36px;background:var(--cyan);border:none;border-radius:20px;color:#04141f;font-family:'Baloo 2',sans-serif;font-size:1rem;letter-spacing:.02em;font-weight:700;cursor:pointer;box-shadow:0 6px 0 #1f7fa3;transition:transform .1s}
-.net-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #1f7fa3}
+.net-btn{padding:16px 36px;background:var(--cyan);border:none;border-radius:20px;color:#fff;font-family:'Baloo 2',sans-serif;font-size:1rem;letter-spacing:.02em;font-weight:700;cursor:pointer;box-shadow:0 6px 0 #0a6a92;transition:transform .1s}
+.net-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #0a6a92}
 .room-code{font-family:'Baloo 2',sans-serif;font-size:3rem;font-weight:800;letter-spacing:.2em;color:var(--cyan);padding:16px 32px;border:2px solid var(--border);border-radius:20px;background:var(--panel)}
 .share-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 18px;border:2px solid var(--border);border-radius:18px;background:var(--panel);min-width:190px}
 .share-card-title{font-family:'Baloo 2',sans-serif;font-size:.78rem;font-weight:700;color:var(--text)}
@@ -91,7 +91,7 @@ canvas{display:block;position:absolute;top:0;left:0}
 .lp{display:flex;flex-direction:column;align-items:center;gap:8px;font-family:'Baloo 2',sans-serif;font-size:.78rem;letter-spacing:.02em;min-width:150px;padding:14px;border:2px solid var(--border);border-radius:16px;background:var(--panel)}
 .lp-dot{width:13px;height:13px;border-radius:50%;background:var(--border)}
 .lp-dot.on{background:var(--cyan)}
-.lp-dot.ready{background:#3ddc84}
+.lp-dot.ready{background:#1fae60}
 .lp-status{font-size:.6rem;letter-spacing:.02em;color:var(--textdim);font-weight:700}
 #final-title{font-family:'Baloo 2',sans-serif;font-size:2.2rem;font-weight:800}
 </style>
@@ -207,7 +207,6 @@ function answerMsForCount(count){
 const REVEAL_MS=2800;
 const NEXT_ROUND_GAP=550;
 const MAX_MISSES=3;
-const CUBE_PALETTE=['#4fd1ff','#ff9f45','#8b6bff','#3ddc84','#ff5d8f','#ffd23c'];
 
 function rangeForRound(round){
   // ramps up ~1.5 cubes per round, up to 40, so the longer answer windows (21+, 31+) actually come into play
@@ -240,26 +239,24 @@ function applyModeUI(){
   document.getElementById('hrv-b').classList.toggle('solo-hide',solo);
 }
 
-function shadeColor(hex,pct){
-  const num=parseInt(hex.slice(1),16);
-  let r=(num>>16)+Math.round(255*pct), g=((num>>8)&0xff)+Math.round(255*pct), b=(num&0xff)+Math.round(255*pct);
-  r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
-  return 'rgb('+r+','+g+','+b+')';
-}
-
 function layoutCubes(count){
-  const stageW=AW*0.56, stageH=AH*0.44;
-  const originX=AW/2-stageW/2, originY=AH*0.5-stageH/2;
-  const size=Math.max(30,78-count*2.4);
-  const positions=[];
-  for(let i=0;i<count;i++){
-    let tries=0,pos;
-    do{
-      pos={x:originX+Math.random()*stageW,y:originY+Math.random()*stageH};
-      tries++;
-    }while(tries<25 && positions.some(p=>Math.hypot(p.x-pos.x,p.y-pos.y)<size*0.7));
-    positions.push(pos);
-  }
+  // Big play area; cubes are dropped into a randomly-filled, jittered grid so they never overlap
+  const stageW=AW*0.86, stageH=AH*0.74;
+  const originX=(AW-stageW)/2, originY=AH*0.2;
+  let cols=Math.max(1,Math.ceil(Math.sqrt(count*stageW/stageH)));
+  let rows=Math.ceil(count/cols);
+  while(cols*rows<count) cols++;
+  const cellW=stageW/cols, cellH=stageH/rows;
+  // a cube is 0.87*size wide and 1*size tall
+  const size=Math.min(210, cellH/1.12, cellW/(0.87*1.12));
+  const cells=[];
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) cells.push({r,c});
+  for(let i=cells.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [cells[i],cells[j]]=[cells[j],cells[i]]; }
+  const slackX=Math.max(0,cellW-size*0.87), slackY=Math.max(0,cellH-size);
+  const positions=cells.slice(0,count).map(({r,c})=>({
+    x:originX+c*cellW+cellW/2+(Math.random()-0.5)*slackX*0.8,
+    y:originY+r*cellH+cellH/2+(Math.random()-0.5)*slackY*0.8
+  }));
   // stagger so the whole batch (first cube entering -> last cube gone) takes exactly SHOW_MS
   const stagger=Math.min(45,700/count);
   const hold=Math.max(0,SHOW_MS-ENTER_DUR-EXIT_DUR-(count-1)*stagger);
@@ -268,7 +265,6 @@ function layoutCubes(count){
     fromX:AW+size+40,          // start just off the RIGHT edge
     outX:-size-40,             // leave just off the LEFT edge
     size,
-    color:CUBE_PALETTE[i%CUBE_PALETTE.length],
     enterStart:i*stagger,
     enterEnd:i*stagger+ENTER_DUR,
     exitStart:i*stagger+ENTER_DUR+hold,
@@ -304,7 +300,7 @@ function startAnswerPhase(){
   round.phase='answer';
   round.taps={A:0,B:0};
   round.phaseStart=performance.now();
-  setHud('phase','HOW MANY CUBES?',true);
+  setHud('phase','HOW MANY CUBES?  ('+(round.answerMs/1000)+'s)',true);
   setHud('timer',true);
   setHud('tallies',true);
   updateTallies();
@@ -443,22 +439,58 @@ function easeInCubic(t){ return t*t*t; }
 function easeInBack(t){ const c1=1.70158,c3=c1+1; return c3*t*t*t-c1*t*t; }
 function lerp(a,b,t){ return a+(b-a)*t; }
 
-function drawCube(cx,cy,size,color){
-  const s=size*0.5;
-  const top=[[cx,cy-s],[cx+s*0.87,cy-s*0.5],[cx,cy],[cx-s*0.87,cy-s*0.5]];
-  const left=[[cx-s*0.87,cy-s*0.5],[cx,cy],[cx,cy+s],[cx-s*0.87,cy+s*0.5]];
-  const right=[[cx+s*0.87,cy-s*0.5],[cx,cy],[cx,cy+s],[cx+s*0.87,cy+s*0.5]];
-  function poly(pts,fill){
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0],pts[0][1]);
-    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
-    ctx.closePath();
-    ctx.fillStyle=fill;ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=1;ctx.stroke();
+function roundPath(pts,r){
+  const n=pts.length;
+  ctx.beginPath();
+  for(let i=0;i<n;i++){
+    const p0=pts[(i-1+n)%n], p1=pts[i], p2=pts[(i+1)%n];
+    const l1=Math.hypot(p0[0]-p1[0],p0[1]-p1[1]), l2=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]);
+    const rr=Math.min(r,l1/2,l2/2);
+    const ax=p1[0]+(p0[0]-p1[0])/l1*rr, ay=p1[1]+(p0[1]-p1[1])/l1*rr;
+    const bx=p1[0]+(p2[0]-p1[0])/l2*rr, by=p1[1]+(p2[1]-p1[1])/l2*rr;
+    if(i===0) ctx.moveTo(ax,ay); else ctx.lineTo(ax,ay);
+    ctx.quadraticCurveTo(p1[0],p1[1],bx,by);
   }
-  poly(top,shadeColor(color,0.28));
-  poly(left,shadeColor(color,-0.22));
-  poly(right,shadeColor(color,-0.05));
+  ctx.closePath();
+}
+function shrink(pts,k){
+  const mx=pts.reduce((a,p)=>a+p[0],0)/pts.length, my=pts.reduce((a,p)=>a+p[1],0)/pts.length;
+  return pts.map(p=>[mx+(p[0]-mx)*k, my+(p[1]-my)*k]);
+}
+
+// silver cube with rounded corners
+function drawCube(cx,cy,size){
+  const s=size*0.5, w=s*0.87;
+  const T=[cx,cy-s], UR=[cx+w,cy-s*0.5], LR=[cx+w,cy+s*0.5], B=[cx,cy+s], LL=[cx-w,cy+s*0.5], UL=[cx-w,cy-s*0.5], C=[cx,cy];
+
+  // soft floor shadow
+  ctx.fillStyle='rgba(20,30,50,0.13)';
+  ctx.beginPath(); ctx.ellipse(cx,cy+s*1.02,w*1.0,s*0.2,0,0,Math.PI*2); ctx.fill();
+
+  // outer rounded body (acts as the dark edge / bevel between faces)
+  roundPath([T,UR,LR,B,LL,UL],s*0.26);
+  ctx.fillStyle='#6f7680'; ctx.fill();
+
+  // three rounded faces, slightly inset so the edges read as bevels
+  const faces=[
+    {pts:[T,UR,C,UL], y0:cy-s, y1:cy,     c0:'#ffffff', c1:'#dde1e7'}, // top
+    {pts:[UL,C,B,LL], y0:cy-s*0.5, y1:cy+s, c0:'#b7bec7', c1:'#8b929c'}, // left
+    {pts:[UR,C,B,LR], y0:cy-s*0.5, y1:cy+s, c0:'#dfe3e8', c1:'#a7aeb8'}  // right
+  ];
+  for(const f of faces){
+    roundPath(shrink(f.pts,0.9),s*0.2);
+    const g=ctx.createLinearGradient(0,f.y0,0,f.y1);
+    g.addColorStop(0,f.c0); g.addColorStop(1,f.c1);
+    ctx.fillStyle=g; ctx.fill();
+  }
+
+  // shiny highlight on the top face
+  ctx.fillStyle='rgba(255,255,255,0.75)';
+  ctx.beginPath(); ctx.ellipse(cx-w*0.32,cy-s*0.62,s*0.3,s*0.09,-0.5,0,Math.PI*2); ctx.fill();
+
+  // thin outline so the silver reads against the white background
+  roundPath([T,UR,LR,B,LL,UL],s*0.26);
+  ctx.strokeStyle='rgba(40,48,60,0.35)'; ctx.lineWidth=1; ctx.stroke();
 }
 
 function renderCubes(now){
@@ -478,21 +510,13 @@ function renderCubes(now){
       const p=(t-cube.exitStart)/EXIT_DUR;
       x=lerp(cube.toX,cube.outX,easeInCubic(p)); y=cube.toY;
     }
-    drawCube(x,y,cube.size,cube.color);
+    drawCube(x,y,cube.size);
   }
 }
 
 function render(now){
   ctx.clearRect(0,0,AW,AH);
-  const g=ctx.createLinearGradient(0,0,0,AH);
-  g.addColorStop(0,'#0b1730');g.addColorStop(1,'#0a1220');
-  ctx.fillStyle=g;ctx.fillRect(0,0,AW,AH);
-
-  // faint stage platform
-  ctx.fillStyle='rgba(79,209,255,0.04)';
-  ctx.beginPath();
-  ctx.ellipse(AW/2,AH*0.52,AW*0.32,AH*0.22,0,0,Math.PI*2);
-  ctx.fill();
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,AW,AH);
 
   if(gameActive) renderCubes(now);
 }
@@ -588,9 +612,14 @@ document.getElementById('btn-restart').addEventListener('click',()=>{
 socket.on('return_to_lobby',()=>{
   gameActive=false;
   clearTimeout(roundTimer);
+  round=null;
+  setHud('phase','',false);
+  setHud('timer',false);
+  setHud('tallies',false);
+  setHud('reveal',false);
+  document.getElementById('round-line').textContent='Round 1';
   showScreen('screen-lobby');
-  setDot('dot-a','status-a','connected');
-  setDot('dot-b','status-b','connected');
+  // the lobby_update that follows will show who is connected / ready
 });
 
 socket.on('ctrl_tap',({slot})=>{

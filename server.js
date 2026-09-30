@@ -16,7 +16,12 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    // always serve the latest html so a stale cached page can't run old game rules
+    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+  }
+}));
 
 // ── ROOM STATE ──
 // rooms[code] = {
@@ -126,7 +131,8 @@ io.on('connection', (socket) => {
     room.ready.A = false;
     room.ready.B = false;
     room.started = false;
-    io.to(code).emit('return_to_lobby');
+    io.to(code).emit('return_to_lobby');            // phones (they are in the room)
+    socket.emit('return_to_lobby');                  // the host display (it is NOT in the room)
     broadcastLobby(code);
   });
 
