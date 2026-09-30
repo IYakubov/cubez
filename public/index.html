@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Counting Clash</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a1220;
+  --panel:#111c30;
+  --panel2:#182741;
+  --border:#243a5e;
+  --accentA:#3fa9ff;
+  --accentB:#ff5d8f;
+  --cyan:#4fd1ff;
+  --good:#3ddc84;
+  --bad:#ff5d5d;
+  --text:#eaf1ff;
+  --textdim:#7f8fb3;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;user-select:none}
+body{display:flex;flex-direction:column}
+
+/* ── TOPBAR ── */
+#topbar{width:100%;flex-shrink:0;display:flex;align-items:stretch;background:var(--panel);border-bottom:2px solid var(--border)}
+.tb-side{display:flex;align-items:center;gap:12px;padding:8px 18px;flex:0 0 260px;border-bottom:4px solid}
+.tb-side.left{border-color:var(--accentA)}
+.tb-side.right{border-color:var(--accentB);flex-direction:row-reverse}
+.tb-info{display:flex;flex-direction:column;gap:4px}
+.tb-info.rt{align-items:flex-end}
+.tb-name{font-family:'Baloo 2',sans-serif;font-size:.82rem;font-weight:700;letter-spacing:.02em}
+.pAc{color:var(--accentA)}
+.pBc{color:var(--accentB)}
+.strikes{display:flex;gap:5px}
+.strike-row.rt{flex-direction:row-reverse}
+.strike{width:16px;height:16px;border-radius:5px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;color:var(--border);transition:all .2s}
+.strike.used{border-color:var(--bad);color:var(--bad);background:rgba(255,93,93,.12)}
+.tb-score{font-size:.6rem;color:var(--textdim);font-weight:700;letter-spacing:.02em}
+.tb-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.game-title{font-family:'Baloo 2',sans-serif;font-size:.75rem;font-weight:800;letter-spacing:.12em;color:var(--cyan)}
+.round-line{font-size:.62rem;color:var(--textdim);letter-spacing:.02em;font-weight:700}
+
+/* ── ARENA ── */
+#arena{position:relative;flex:1;overflow:hidden;background:var(--bg)}
+canvas{display:block;position:absolute;top:0;left:0}
+
+/* ── CENTER HUD (non-blocking, sits above canvas during rounds) ── */
+#hud{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:50}
+.hud-phase{margin-top:26px;font-family:'Baloo 2',sans-serif;font-size:1.5rem;font-weight:800;color:var(--cyan);letter-spacing:.03em;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.4);opacity:0;transition:opacity .25s}
+.hud-phase.show{opacity:1}
+.hud-timerbar{margin-top:10px;width:min(70vw,420px);height:10px;border-radius:6px;background:var(--panel2);border:1px solid var(--border);overflow:hidden;opacity:0;transition:opacity .25s}
+.hud-timerbar.show{opacity:1}
+.hud-timerfill{height:100%;width:100%;background:var(--cyan);border-radius:6px}
+.hud-tallies{margin-top:18px;display:flex;gap:40px;opacity:0;transition:opacity .25s}
+.hud-tallies.show{opacity:1}
+.hud-tally{display:flex;flex-direction:column;align-items:center;gap:2px}
+.hud-tally-name{font-size:.65rem;font-weight:700;letter-spacing:.03em}
+.hud-tally-num{font-family:'Baloo 2',sans-serif;font-size:2.6rem;font-weight:800}
+.hud-reveal{margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0;transition:opacity .3s}
+.hud-reveal.show{opacity:1}
+.hud-reveal-num{font-family:'Baloo 2',sans-serif;font-size:3.2rem;font-weight:800;color:var(--cyan)}
+.hud-reveal-sub{font-size:.85rem;font-weight:700;color:var(--text)}
+.hud-reveal-row{display:flex;gap:28px}
+.hrv{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 18px;border-radius:14px;border:2px solid var(--border);background:var(--panel)}
+.hrv.correct{border-color:var(--good)}
+.hrv.wrong{border-color:var(--bad)}
+.hrv-tag{font-size:.6rem;font-weight:800;letter-spacing:.03em}
+.hrv-tag.correct{color:var(--good)}
+.hrv-tag.wrong{color:var(--bad)}
+.hrv-num{font-family:'Baloo 2',sans-serif;font-size:1.3rem;font-weight:800}
+
+/* ── SCREENS ── */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(10,18,32,.96);z-index:100;padding:20px}
+.screen.hidden{display:none}
+.ov-tag{font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--cyan);background:var(--panel2);border:2px solid var(--border);border-radius:999px;padding:5px 16px;text-transform:uppercase}
+.screen-title{font-family:'Baloo 2',sans-serif;font-size:2.6rem;font-weight:800;color:var(--cyan);letter-spacing:.01em;text-align:center}
+.screen-sub{font-size:.85rem;color:var(--textdim);text-align:center;max-width:480px;line-height:1.6;font-weight:600}
+.net-btn{padding:16px 36px;background:var(--cyan);border:none;border-radius:20px;color:#04141f;font-family:'Baloo 2',sans-serif;font-size:1rem;letter-spacing:.02em;font-weight:700;cursor:pointer;box-shadow:0 6px 0 #1f7fa3;transition:transform .1s}
+.net-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #1f7fa3}
+.room-code{font-family:'Baloo 2',sans-serif;font-size:3rem;font-weight:800;letter-spacing:.2em;color:var(--cyan);padding:16px 32px;border:2px solid var(--border);border-radius:20px;background:var(--panel)}
+.share-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 18px;border:2px solid var(--border);border-radius:18px;background:var(--panel);min-width:190px}
+.share-card-title{font-family:'Baloo 2',sans-serif;font-size:.78rem;font-weight:700;color:var(--text)}
+.share-qr{width:140px;height:140px;border-radius:10px;background:#fff}
+.share-link{font-size:.6rem;color:var(--textdim);word-break:break-all;text-align:center;max-width:180px;font-weight:600}
+.lobby-players{display:flex;gap:24px;margin-top:4px}
+.lp{display:flex;flex-direction:column;align-items:center;gap:8px;font-family:'Baloo 2',sans-serif;font-size:.78rem;letter-spacing:.02em;min-width:150px;padding:14px;border:2px solid var(--border);border-radius:16px;background:var(--panel)}
+.lp-dot{width:13px;height:13px;border-radius:50%;background:var(--border)}
+.lp-dot.on{background:var(--cyan)}
+.lp-dot.ready{background:#3ddc84}
+.lp-status{font-size:.6rem;letter-spacing:.02em;color:var(--textdim);font-weight:700}
+#final-title{font-family:'Baloo 2',sans-serif;font-size:2.2rem;font-weight:800}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="tb-side left">
+    <div class="tb-info">
+      <div class="tb-name pAc">Player A</div>
+      <div class="strikes" id="strikesA"></div>
+      <div class="tb-score" id="scoreA">0 correct</div>
+    </div>
+  </div>
+  <div class="tb-center">
+    <div class="game-title">Counting Clash</div>
+    <div class="round-line" id="round-line">Round 1</div>
+  </div>
+  <div class="tb-side right">
+    <div class="tb-info rt">
+      <div class="tb-name pBc">Player B</div>
+      <div class="strikes strike-row rt" id="strikesB"></div>
+      <div class="tb-score" id="scoreB">0 correct</div>
+    </div>
+  </div>
+</div>
+
+<!-- ARENA -->
+<div id="arena">
+  <canvas id="c"></canvas>
+
+  <div id="hud">
+    <div class="hud-phase" id="hud-phase"></div>
+    <div class="hud-timerbar" id="hud-timerbar"><div class="hud-timerfill" id="hud-timerfill"></div></div>
+    <div class="hud-tallies" id="hud-tallies">
+      <div class="hud-tally"><div class="hud-tally-name pAc">PLAYER A</div><div class="hud-tally-num pAc" id="tally-a">0</div></div>
+      <div class="hud-tally"><div class="hud-tally-name pBc">PLAYER B</div><div class="hud-tally-num pBc" id="tally-b">0</div></div>
+    </div>
+    <div class="hud-reveal" id="hud-reveal">
+      <div class="hud-reveal-sub">THE ANSWER WAS</div>
+      <div class="hud-reveal-num" id="hud-reveal-num">0</div>
+      <div class="hud-reveal-row">
+        <div class="hrv" id="hrv-a"><div class="hrv-tag" id="hrv-a-tag">CORRECT</div><div class="hrv-num pAc" id="hrv-a-num">0</div></div>
+        <div class="hrv" id="hrv-b"><div class="hrv-tag" id="hrv-b-tag">CORRECT</div><div class="hrv-num pBc" id="hrv-b-num">0</div></div>
+      </div>
+      <div class="hud-reveal-sub" id="hud-round-outcome"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 1: HOME -->
+  <div class="screen" id="screen-home">
+    <div class="ov-tag">2 players</div>
+    <div class="screen-title">Counting Clash</div>
+    <div class="screen-sub">Cubes fly in, hold for a moment, then vanish. Count them fast — each player taps their button on their phone to match the number. 3 wrong guesses and you're out!</div>
+    <button class="net-btn" id="btn-create">Create Game</button>
+  </div>
+
+  <!-- SCREEN 2: LOBBY -->
+  <div class="screen hidden" id="screen-lobby">
+    <div class="ov-tag">Waiting for players</div>
+    <div class="screen-sub">Share this code — each player opens the controller on their phone and enters it:</div>
+    <div class="room-code" id="room-code-display">------</div>
+    <div class="share-card">
+      <div class="share-card-title">Join as controller</div>
+      <img class="share-qr" id="join-qr" alt="QR code to join"/>
+      <div class="share-link" id="join-link"></div>
+    </div>
+    <div class="lobby-players">
+      <div class="lp"><div class="lp-dot" id="dot-a"></div><span>Player A</span><span class="lp-status" id="status-a">Waiting...</span></div>
+      <div class="lp"><div class="lp-dot" id="dot-b"></div><span>Player B</span><span class="lp-status" id="status-b">Waiting...</span></div>
+    </div>
+    <div class="screen-sub">Waiting for both players to connect and press Ready...</div>
+  </div>
+
+  <!-- SCREEN 3: GAME OVER -->
+  <div class="screen hidden" id="screen-gameover">
+    <div class="ov-tag">Match over</div>
+    <div id="final-title">Player A Wins!</div>
+    <button class="net-btn" id="btn-restart">Rematch</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════
+//  CANVAS / ARENA
+// ═══════════════════════════════════════════════════════
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const arena=document.getElementById('arena');
+let AW=0,AH=0;
+function resize(){ AW=arena.clientWidth;AH=arena.clientHeight;canvas.width=AW;canvas.height=AH; }
+window.addEventListener('resize',resize);
+
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════
+const HOLD_MS=3000;
+const ENTER_DUR=480;
+const EXIT_DUR=420;
+const ANSWER_MS=5000;
+const REVEAL_MS=2800;
+const NEXT_ROUND_GAP=550;
+const MAX_MISSES=3;
+const CUBE_PALETTE=['#4fd1ff','#ff9f45','#8b6bff','#3ddc84','#ff5d8f','#ffd23c'];
+
+function rangeForRound(round){
+  const growth=Math.min(13,round-1);
+  const max=Math.min(18,5+growth);
+  const min=Math.max(3,max-3);
+  return {min,max};
+}
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+// ═══════════════════════════════════════════════════════
+//  MATCH / ROUND STATE
+// ═══════════════════════════════════════════════════════
+let match=null;   // {misses:{A,B}, score:{A,B}}
+let round=null;   // {number,count,cubes,phase,phaseStart,taps:{A,B},showTotalDur}
+let gameActive=false;
+let roundTimer=null;
+let lastTs=0;
+
+function newMatch(){
+  match={ misses:{A:0,B:0}, score:{A:0,B:0} };
+}
+
+function shadeColor(hex,pct){
+  const num=parseInt(hex.slice(1),16);
+  let r=(num>>16)+Math.round(255*pct), g=((num>>8)&0xff)+Math.round(255*pct), b=(num&0xff)+Math.round(255*pct);
+  r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+  return 'rgb('+r+','+g+','+b+')';
+}
+
+function layoutCubes(count){
+  const stageW=AW*0.56, stageH=AH*0.44;
+  const originX=AW/2-stageW/2, originY=AH*0.5-stageH/2;
+  const size=Math.max(30,78-count*2.4);
+  const positions=[];
+  for(let i=0;i<count;i++){
+    let tries=0,pos;
+    do{
+      pos={x:originX+Math.random()*stageW,y:originY+Math.random()*stageH};
+      tries++;
+    }while(tries<25 && positions.some(p=>Math.hypot(p.x-pos.x,p.y-pos.y)<size*0.7));
+    positions.push(pos);
+  }
+  const stagger=Math.min(35,300/count);
+  return positions.map((p,i)=>({
+    toX:p.x,toY:p.y,
+    fromX:AW+120+Math.random()*160,
+    fromY:p.y+(Math.random()-0.5)*60,
+    size,
+    color:CUBE_PALETTE[i%CUBE_PALETTE.length],
+    enterStart:i*stagger,
+    enterEnd:i*stagger+ENTER_DUR,
+    bobSeed:Math.random()*1000
+  }));
+}
+
+function startRound(){
+  const r=rangeForRound(round?round.number+1:1);
+  const count=randInt(r.min,r.max);
+  const cubes=layoutCubes(count);
+  const enterSpan=(count-1)*Math.min(35,300/count)+ENTER_DUR;
+  const showTotalDur=enterSpan+HOLD_MS+EXIT_DUR+150;
+  round={
+    number: round?round.number+1:1,
+    count, cubes, showTotalDur,
+    phase:'show', phaseStart:performance.now(),
+    exitStart:enterSpan+HOLD_MS,
+    exitEnd:enterSpan+HOLD_MS+EXIT_DUR,
+    taps:{A:0,B:0}
+  };
+  document.getElementById('round-line').textContent='Round '+round.number;
+  setHud('phase','MEMORIZE!',true);
+  setHud('timer',false);
+  setHud('tallies',false);
+  setHud('reveal',false);
+  emitHost('watch',{});
+  clearTimeout(roundTimer);
+  roundTimer=setTimeout(startAnswerPhase,showTotalDur);
+}
+
+function startAnswerPhase(){
+  if(!gameActive) return;
+  round.phase='answer';
+  round.taps={A:0,B:0};
+  round.phaseStart=performance.now();
+  setHud('phase','HOW MANY CUBES?',true);
+  setHud('timer',true);
+  setHud('tallies',true);
+  updateTallies();
+  emitHost('answer',{seconds:ANSWER_MS/1000});
+  clearTimeout(roundTimer);
+  roundTimer=setTimeout(startRevealPhase,ANSWER_MS);
+}
+
+function startRevealPhase(){
+  if(!gameActive) return;
+  round.phase='reveal';
+  setHud('phase','',false);
+  setHud('timer',false);
+  setHud('tallies',false);
+
+  const correctA=round.taps.A===round.count;
+  const correctB=round.taps.B===round.count;
+  if(!correctA) match.misses.A++;
+  if(!correctB) match.misses.B++;
+  if(correctA) match.score.A++;
+  if(correctB) match.score.B++;
+  updateSidebars();
+
+  document.getElementById('hud-reveal-num').textContent=round.count;
+  document.getElementById('hrv-a-num').textContent=round.taps.A;
+  document.getElementById('hrv-b-num').textContent=round.taps.B;
+  const tagA=document.getElementById('hrv-a-tag'), tagB=document.getElementById('hrv-b-tag');
+  const boxA=document.getElementById('hrv-a'), boxB=document.getElementById('hrv-b');
+  tagA.textContent=correctA?'CORRECT':'WRONG'; tagA.className='hrv-tag '+(correctA?'correct':'wrong');
+  boxA.className='hrv '+(correctA?'correct':'wrong');
+  tagB.textContent=correctB?'CORRECT':'WRONG'; tagB.className='hrv-tag '+(correctB?'correct':'wrong');
+  boxB.className='hrv '+(correctB?'correct':'wrong');
+
+  let outcome;
+  if(correctA&&correctB) outcome='Both nailed it!';
+  else if(correctA) outcome='Player A wins the round!';
+  else if(correctB) outcome='Player B wins the round!';
+  else outcome='Both missed it!';
+  document.getElementById('hud-round-outcome').textContent=outcome;
+  setHud('reveal',true);
+
+  emitHost('reveal',{count:round.count,taps:round.taps,correctA,correctB,missesA:match.misses.A,missesB:match.misses.B});
+
+  clearTimeout(roundTimer);
+  roundTimer=setTimeout(()=>{
+    if(match.misses.A>=MAX_MISSES||match.misses.B>=MAX_MISSES){ endMatch(); }
+    else{ setHud('reveal',false); roundTimer=setTimeout(startRound,NEXT_ROUND_GAP); }
+  },REVEAL_MS);
+}
+
+function endMatch(){
+  gameActive=false;
+  clearTimeout(roundTimer);
+  let winner=null, msg;
+  const aOut=match.misses.A>=MAX_MISSES, bOut=match.misses.B>=MAX_MISSES;
+  if(aOut&&bOut){
+    if(match.score.A>match.score.B) winner='A';
+    else if(match.score.B>match.score.A) winner='B';
+    else winner=null;
+  } else if(aOut) winner='B';
+  else winner='A';
+
+  const title=document.getElementById('final-title');
+  if(winner){
+    title.textContent='Player '+winner+' Wins!';
+    title.style.color=winner==='A'?'var(--accentA)':'var(--accentB)';
+  }else{
+    title.textContent="It's a Draw!";
+    title.style.color='var(--cyan)';
+  }
+  emitHost('gameover',{winner});
+  showScreen('screen-gameover');
+}
+
+// ═══════════════════════════════════════════════════════
+//  HUD helpers
+// ═══════════════════════════════════════════════════════
+function setHud(which,arg1,arg2){
+  if(which==='phase'){
+    const el=document.getElementById('hud-phase');
+    el.textContent=arg1;
+    el.classList.toggle('show',!!arg2&&!!arg1);
+  }else if(which==='timer'){
+    document.getElementById('hud-timerbar').classList.toggle('show',!!arg1);
+  }else if(which==='tallies'){
+    document.getElementById('hud-tallies').classList.toggle('show',!!arg1);
+  }else if(which==='reveal'){
+    document.getElementById('hud-reveal').classList.toggle('show',!!arg1);
+  }
+}
+
+function updateTallies(){
+  document.getElementById('tally-a').textContent=round?round.taps.A:0;
+  document.getElementById('tally-b').textContent=round?round.taps.B:0;
+}
+
+function updateSidebars(){
+  renderStrikes('strikesA',match.misses.A);
+  renderStrikes('strikesB',match.misses.B);
+  document.getElementById('scoreA').textContent=match.score.A+' correct';
+  document.getElementById('scoreB').textContent=match.score.B+' correct';
+}
+function renderStrikes(elId,misses){
+  const el=document.getElementById(elId);
+  el.innerHTML='';
+  for(let i=0;i<MAX_MISSES;i++){
+    const d=document.createElement('div');
+    d.className='strike'+(i<misses?' used':'');
+    d.textContent='✕';
+    el.appendChild(d);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function easeOutBack(t){ const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+function easeInBack(t){ const c1=1.70158,c3=c1+1; return c3*t*t*t-c1*t*t; }
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+function drawCube(cx,cy,size,color){
+  const s=size*0.5;
+  const top=[[cx,cy-s],[cx+s*0.87,cy-s*0.5],[cx,cy],[cx-s*0.87,cy-s*0.5]];
+  const left=[[cx-s*0.87,cy-s*0.5],[cx,cy],[cx,cy+s],[cx-s*0.87,cy+s*0.5]];
+  const right=[[cx+s*0.87,cy-s*0.5],[cx,cy],[cx,cy+s],[cx+s*0.87,cy+s*0.5]];
+  function poly(pts,fill){
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    ctx.closePath();
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=1;ctx.stroke();
+  }
+  poly(top,shadeColor(color,0.28));
+  poly(left,shadeColor(color,-0.22));
+  poly(right,shadeColor(color,-0.05));
+}
+
+function renderCubes(now){
+  if(!round) return;
+  const t=now-round.phaseStart;
+  for(const cube of round.cubes){
+    let x,y,scale=1,alpha=1;
+    if(round.phase==='show'){
+      if(t<cube.enterStart){ continue; }
+      else if(t<cube.enterEnd){
+        const p=Math.max(0,Math.min(1,(t-cube.enterStart)/ENTER_DUR));
+        const e=easeOutBack(p);
+        x=lerp(cube.fromX,cube.toX,e); y=lerp(cube.fromY,cube.toY,e);
+        scale=lerp(0.5,1,Math.min(1,p*1.3));
+      }else if(t<round.exitStart){
+        x=cube.toX; y=cube.toY+Math.sin((now+cube.bobSeed)/260)*3;
+      }else if(t<round.exitEnd){
+        const p=Math.max(0,Math.min(1,(t-round.exitStart)/EXIT_DUR));
+        const e=easeInBack(p);
+        x=lerp(cube.toX,cube.fromX,Math.min(1,e)); y=lerp(cube.toY,cube.toY-30,Math.min(1,p));
+        scale=lerp(1,0.4,p);
+        alpha=1-p*0.7;
+      }else continue;
+    }else{
+      x=cube.toX; y=cube.toY+Math.sin((now+cube.bobSeed)/260)*3;
+    }
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    drawCube(x,y,cube.size*scale,cube.color);
+    ctx.restore();
+  }
+}
+
+function render(now){
+  ctx.clearRect(0,0,AW,AH);
+  const g=ctx.createLinearGradient(0,0,0,AH);
+  g.addColorStop(0,'#0b1730');g.addColorStop(1,'#0a1220');
+  ctx.fillStyle=g;ctx.fillRect(0,0,AW,AH);
+
+  // faint stage platform
+  ctx.fillStyle='rgba(79,209,255,0.04)';
+  ctx.beginPath();
+  ctx.ellipse(AW/2,AH*0.52,AW*0.32,AH*0.22,0,0,Math.PI*2);
+  ctx.fill();
+
+  if(gameActive) renderCubes(now);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN LOOP (drives cube animation + the answer timer bar)
+// ═══════════════════════════════════════════════════════
+function loop(ts){
+  render(ts);
+  if(gameActive&&round&&round.phase==='answer'){
+    const elapsed=performance.now()-round.phaseStart;
+    const remain=Math.max(0,1-elapsed/ANSWER_MS);
+    document.getElementById('hud-timerfill').style.width=(remain*100)+'%';
+  }
+  requestAnimationFrame(loop);
+}
+
+// ═══════════════════════════════════════════════════════
+//  SCREENS
+// ═══════════════════════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+function hideAllScreens(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+}
+
+// ═══════════════════════════════════════════════════════
+//  SOCKET.IO
+// ═══════════════════════════════════════════════════════
+const socket=io();
+let myCode=null;
+
+function emitHost(type,payload){
+  if(!myCode) return;
+  socket.emit('host_event',{code:myCode,type,payload});
+}
+
+document.getElementById('btn-create').addEventListener('click',()=>{ socket.emit('create_game'); });
+
+socket.on('game_created',({code})=>{
+  myCode=code;
+  document.getElementById('room-code-display').textContent=code;
+  const origin=window.location.origin;
+  const joinUrl=origin+'/controller.html?code='+code;
+  const qr='https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&qzone=1&color=04141f&bgcolor=ffffff&data='+encodeURIComponent(joinUrl);
+  document.getElementById('join-link').textContent=joinUrl;
+  document.getElementById('join-qr').src=qr;
+  showScreen('screen-lobby');
+});
+
+function setDot(dotId,statusId,state){
+  const dot=document.getElementById(dotId),sta=document.getElementById(statusId);
+  dot.classList.remove('on','ready');
+  if(state==='ready'){dot.classList.add('ready');sta.textContent='Ready!';}
+  else if(state==='connected'){dot.classList.add('on');sta.textContent='Connected';}
+  else{sta.textContent='Waiting...';}
+}
+socket.on('lobby_update',data=>{
+  setDot('dot-a','status-a',data.readyA?'ready':data.A?'connected':'waiting');
+  setDot('dot-b','status-b',data.readyB?'ready':data.B?'connected':'waiting');
+});
+socket.on('player_left',({slot})=>{
+  setDot('dot-'+slot.toLowerCase(),'status-'+slot.toLowerCase(),'waiting');
+});
+
+socket.on('game_start',()=>{
+  resize();
+  newMatch();
+  round=null;
+  updateSidebars();
+  gameActive=true;
+  hideAllScreens();
+  startRound();
+});
+
+document.getElementById('btn-restart').addEventListener('click',()=>{
+  socket.emit('restart_game',{code:myCode});
+});
+socket.on('return_to_lobby',()=>{
+  gameActive=false;
+  clearTimeout(roundTimer);
+  showScreen('screen-lobby');
+  setDot('dot-a','status-a','connected');
+  setDot('dot-b','status-b','connected');
+});
+
+socket.on('ctrl_tap',({slot})=>{
+  if(!gameActive||!round||round.phase!=='answer') return;
+  round.taps[slot]=(round.taps[slot]||0)+1;
+  updateTallies();
+});
+
+socket.on('host_disconnected',()=>{});
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+resize();
+showScreen('screen-home');
+requestAnimationFrame(ts=>{lastTs=ts;requestAnimationFrame(loop);});
+</script>
+</body>
+</html>

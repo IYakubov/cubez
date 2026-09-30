@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Counting Clash — Controller</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a1220;
+  --panel:#111c30;
+  --panel2:#182741;
+  --border:#243a5e;
+  --accentA:#3fa9ff;
+  --accentB:#ff5d8f;
+  --cyan:#4fd1ff;
+  --good:#3ddc84;
+  --bad:#ff5d5d;
+  --text:#eaf1ff;
+  --textdim:#7f8fb3;
+}
+html,body{
+  height:100%;width:100%;background:var(--bg);color:var(--text);
+  font-family:'Nunito',sans-serif;overflow:hidden;touch-action:none;
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+*{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
+.screen.hidden{display:none}
+
+.game-title{font-family:'Baloo 2',sans-serif;font-size:1.5rem;font-weight:800;color:var(--cyan)}
+.sub{font-size:.8rem;color:var(--textdim);text-align:center;font-weight:600;max-width:320px;line-height:1.5}
+
+.code-input-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:280px}
+.code-label{font-size:.68rem;color:var(--textdim);letter-spacing:.04em;font-weight:700}
+#code-input{width:100%;padding:14px 16px;text-align:center;letter-spacing:.3em;background:var(--panel);border:2px solid var(--border);border-radius:16px;color:var(--cyan);font-family:'Baloo 2',sans-serif;font-size:1.6rem;font-weight:700;outline:none}
+#code-input:focus{border-color:var(--cyan)}
+
+.btn{padding:14px 32px;background:var(--cyan);border:none;border-radius:18px;color:#04141f;font-family:'Baloo 2',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;width:100%;max-width:280px;box-shadow:0 5px 0 #1f7fa3;transition:transform .1s}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #1f7fa3}
+.btn.done{background:#3ddc84;box-shadow:0 5px 0 #23964f}
+#error-msg{font-size:.72rem;color:var(--accentB);min-height:1em;font-weight:700}
+
+.slot-badge{font-family:'Baloo 2',sans-serif;font-size:2.2rem;font-weight:800;padding:14px 36px;border:2px solid var(--cyan);border-radius:20px;color:var(--cyan);background:var(--panel);letter-spacing:.05em}
+.ready-indicator{display:flex;gap:16px;font-size:.7rem;color:var(--textdim);font-weight:700}
+.ri{display:flex;align-items:center;gap:6px}
+.ri-dot{width:10px;height:10px;border-radius:50%;background:var(--border)}
+.ri-dot.on{background:var(--cyan)}
+
+/* ── BATTLE SCREEN ── */
+#battle-screen{gap:22px}
+.battle-status{font-family:'Baloo 2',sans-serif;font-size:1.1rem;font-weight:800;color:var(--cyan);text-align:center;min-height:1.4em;transition:color .2s}
+.battle-status.wrong{color:var(--bad)}
+.battle-status.correct{color:var(--good)}
+.answer-timer{width:min(70vw,260px);height:8px;border-radius:5px;background:var(--panel2);border:1px solid var(--border);overflow:hidden;opacity:0;transition:opacity .2s}
+.answer-timer.show{opacity:1}
+.answer-timer-fill{height:100%;width:100%;background:var(--cyan);border-radius:5px;transition:width .1s linear}
+
+.button-wrap{position:relative;width:min(72vw,270px);height:min(72vw,270px);touch-action:none;transition:opacity .2s,filter .2s}
+.button-wrap.disabled{opacity:.45;filter:grayscale(0.4);pointer-events:none}
+#dash-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.dash{fill:none;stroke:#ffffff;stroke-width:7;stroke-linecap:round;transition:stroke .15s,filter .15s}
+.dash.lit{stroke:#3fc7ff;filter:drop-shadow(0 0 7px rgba(63,199,255,.95)) drop-shadow(0 0 2px rgba(63,199,255,1))}
+
+.tap-circle{
+  position:absolute;left:50%;top:50%;width:74%;height:74%;transform:translate(-50%,-50%);
+  border-radius:50%;background:#ffffff;border:5px solid var(--cyan);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 rgba(63,199,255,0);
+  transition:box-shadow .18s,transform .1s;
+}
+.tap-circle.pulse{transform:translate(-50%,-50%) scale(0.93);box-shadow:0 0 34px 8px rgba(63,199,255,.65)}
+.tap-num{font-family:'Baloo 2',sans-serif;font-size:3.4rem;font-weight:800;color:var(--cyan);letter-spacing:.01em}
+
+/* ── REVEAL FEEDBACK ── */
+.reveal-card{display:flex;flex-direction:column;align-items:center;gap:6px;opacity:0;transition:opacity .25s;min-height:70px}
+.reveal-card.show{opacity:1}
+.reveal-answer{font-size:.7rem;color:var(--textdim);font-weight:700;letter-spacing:.03em}
+.reveal-num{font-family:'Baloo 2',sans-serif;font-size:1.6rem;font-weight:800}
+
+.strike-track{display:flex;gap:6px}
+.strike-dot{width:11px;height:11px;border-radius:4px;border:2px solid var(--border)}
+.strike-dot.used{border-color:var(--bad);background:rgba(255,93,93,.25)}
+
+#conn-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--accentB);color:#04141f;text-align:center;font-size:.75rem;font-weight:700;padding:8px 0;display:none}
+</style>
+</head>
+<body>
+
+<div id="conn-banner"></div>
+
+<!-- SCREEN 1: JOIN -->
+<div class="screen" id="join-screen">
+  <div class="game-title">Counting Clash</div>
+  <div class="sub">Enter the code shown on the TV/computer to connect your phone as your tap counter.</div>
+  <div class="code-input-wrap">
+    <div class="code-label">ROOM CODE</div>
+    <input id="code-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000"/>
+  </div>
+  <button class="btn" id="join-btn">Connect</button>
+  <div id="error-msg"></div>
+</div>
+
+<!-- SCREEN 2: LOBBY -->
+<div class="screen hidden" id="lobby-screen">
+  <div class="slot-badge" id="my-slot-badge">Player A</div>
+  <div class="sub" id="lobby-status">Waiting for other player...</div>
+  <div class="ready-indicator">
+    <div class="ri"><div class="ri-dot" id="dot-a"></div><span>A</span></div>
+    <div class="ri"><div class="ri-dot" id="dot-b"></div><span>B</span></div>
+  </div>
+  <button class="btn" id="ready-btn">Ready Up</button>
+</div>
+
+<!-- SCREEN 3: BATTLE (tap counter) -->
+<div class="screen hidden" id="battle-screen">
+  <div class="strike-track" id="strike-track"></div>
+  <div class="battle-status" id="battle-status">Watch the screen!</div>
+  <div class="answer-timer" id="answer-timer"><div class="answer-timer-fill" id="answer-timer-fill"></div></div>
+
+  <div class="button-wrap disabled" id="button-wrap">
+    <svg id="dash-svg" viewBox="0 0 240 240"></svg>
+    <div class="tap-circle" id="tap-circle"><div class="tap-num" id="tap-num">00</div></div>
+  </div>
+
+  <div class="reveal-card" id="reveal-card">
+    <div class="reveal-answer">THE ANSWER WAS</div>
+    <div class="reveal-num" id="reveal-num">0</div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+//  BUILD THE DASHED RING
+// ═══════════════════════════════════════════════════════
+const DASH_COUNT=24;
+const GAP_FRACTION=0.38;
+const svgNS='http://www.w3.org/2000/svg';
+const dashSvg=document.getElementById('dash-svg');
+const dashEls=[];
+{
+  const cx=120,cy=120,r=112;
+  const segAngle=360/DASH_COUNT;
+  const dashAngle=segAngle*(1-GAP_FRACTION);
+  for(let i=0;i<DASH_COUNT;i++){
+    const startDeg=i*segAngle-90;
+    const endDeg=startDeg+dashAngle;
+    const startRad=startDeg*Math.PI/180, endRad=endDeg*Math.PI/180;
+    const x1=cx+r*Math.cos(startRad), y1=cy+r*Math.sin(startRad);
+    const x2=cx+r*Math.cos(endRad), y2=cy+r*Math.sin(endRad);
+    const path=document.createElementNS(svgNS,'path');
+    path.setAttribute('d','M '+x1+' '+y1+' A '+r+' '+r+' 0 0 1 '+x2+' '+y2);
+    path.setAttribute('class','dash');
+    dashSvg.appendChild(path);
+    dashEls.push(path);
+  }
+}
+function setLitDashes(count){
+  const lit=Math.max(0,Math.min(DASH_COUNT,count));
+  dashEls.forEach((el,i)=>{ el.classList.toggle('lit',i<lit); });
+}
+
+// ═══════════════════════════════════════════════════════
+//  SOCKET
+// ═══════════════════════════════════════════════════════
+const socket=io({ transports:['websocket'] });
+let mySlot=null, myCode=null, gameStarted=false;
+
+const joinScreen=document.getElementById('join-screen');
+const lobbyScreen=document.getElementById('lobby-screen');
+const battleScreen=document.getElementById('battle-screen');
+const codeInput=document.getElementById('code-input');
+const errorMsg=document.getElementById('error-msg');
+
+function showScreen(name){
+  joinScreen.classList.toggle('hidden',name!=='join');
+  lobbyScreen.classList.toggle('hidden',name!=='lobby');
+  battleScreen.classList.toggle('hidden',name!=='battle');
+}
+
+document.getElementById('join-btn').addEventListener('click',()=>doJoin());
+codeInput.addEventListener('keydown',e=>{if(e.key==='Enter') doJoin();});
+
+{
+  const urlCode=new URLSearchParams(window.location.search).get('code');
+  if(urlCode&&/^\d{6}$/.test(urlCode)){ codeInput.value=urlCode; doJoin(); }
+}
+
+function doJoin(){
+  const code=codeInput.value.trim();
+  if(code.length!==6){errorMsg.textContent='Enter the 6-digit code';return;}
+  errorMsg.textContent='';
+  socket.emit('join_game',{code});
+  myCode=code;
+}
+socket.on('join_error',msg=>{ errorMsg.textContent=msg; });
+
+const readyBtn=document.getElementById('ready-btn');
+let isReady=false;
+readyBtn.addEventListener('click',()=>{
+  if(isReady) return;
+  isReady=true;
+  readyBtn.textContent='Standing By...';
+  readyBtn.classList.add('done');
+  socket.emit('player_ready',{code:myCode});
+});
+
+socket.on('joined',({slot,code})=>{
+  hideConnBanner();
+  mySlot=slot;myCode=code;
+  document.getElementById('my-slot-badge').textContent='Player '+slot;
+  if(!gameStarted){
+    isReady=false;
+    readyBtn.textContent='Ready Up';
+    readyBtn.classList.remove('done');
+    document.getElementById('lobby-status').textContent='Waiting for other player...';
+    updateReadyDots({A:false,B:false});
+    showScreen('lobby');
+  }
+});
+
+socket.on('lobby_update',data=>{
+  updateReadyDots({A:data.A,B:data.B});
+  if(data.A&&data.B) document.getElementById('lobby-status').textContent='Both players aboard — ready up!';
+});
+function updateReadyDots(present){
+  document.getElementById('dot-a').className='ri-dot'+(present.A?' on':'');
+  document.getElementById('dot-b').className='ri-dot'+(present.B?' on':'');
+}
+
+socket.on('game_start',()=>{
+  gameStarted=true;
+  myMisses=0;
+  renderStrikes();
+  showScreen('battle');
+});
+socket.on('return_to_lobby',()=>{
+  gameStarted=false;
+  showScreen('lobby');
+});
+
+socket.on('host_disconnected',()=>{ alert('Host disconnected. Please refresh the page.'); });
+
+const connBanner=document.getElementById('conn-banner');
+function showConnBanner(msg){ connBanner.textContent=msg; connBanner.style.display='block'; }
+function hideConnBanner(){ connBanner.style.display='none'; }
+socket.on('disconnect',()=>{ if(mySlot&&myCode) showConnBanner('Connection lost — reconnecting...'); });
+socket.io.on('reconnect',()=>{ if(mySlot&&myCode) socket.emit('rejoin_game',{code:myCode,slot:mySlot}); });
+socket.on('connect',()=>{ if(mySlot&&myCode) socket.emit('rejoin_game',{code:myCode,slot:mySlot}); });
+
+setInterval(()=>{ socket.emit('ping_check',()=>{}); },5000);
+
+// ═══════════════════════════════════════════════════════
+//  ROUND STATE (driven by the host's generic broadcasts)
+// ═══════════════════════════════════════════════════════
+const buttonWrap=document.getElementById('button-wrap');
+const tapCircle=document.getElementById('tap-circle');
+const tapNum=document.getElementById('tap-num');
+const battleStatus=document.getElementById('battle-status');
+const answerTimer=document.getElementById('answer-timer');
+const answerTimerFill=document.getElementById('answer-timer-fill');
+const revealCard=document.getElementById('reveal-card');
+
+let tapCount=0;
+let answering=false;
+let myMisses=0;
+let answerTimerInterval=null;
+
+function setTapCount(n){
+  tapCount=n;
+  tapNum.textContent=String(tapCount).padStart(2,'0');
+  setLitDashes(tapCount);
+}
+
+function renderStrikes(){
+  const el=document.getElementById('strike-track');
+  el.innerHTML='';
+  for(let i=0;i<3;i++){
+    const d=document.createElement('div');
+    d.className='strike-dot'+(i<myMisses?' used':'');
+    el.appendChild(d);
+  }
+}
+
+socket.on('host_event',({type,payload})=>{
+  if(type==='watch'){
+    answering=false;
+    setTapCount(0);
+    buttonWrap.classList.add('disabled');
+    battleStatus.textContent='Watch the screen!';
+    battleStatus.className='battle-status';
+    answerTimer.classList.remove('show');
+    revealCard.classList.remove('show');
+    clearInterval(answerTimerInterval);
+  }else if(type==='answer'){
+    answering=true;
+    setTapCount(0);
+    buttonWrap.classList.remove('disabled');
+    battleStatus.textContent='TAP TO COUNT!';
+    battleStatus.className='battle-status';
+    revealCard.classList.remove('show');
+    answerTimer.classList.add('show');
+    const totalMs=(payload&&payload.seconds?payload.seconds:5)*1000;
+    const start=performance.now();
+    clearInterval(answerTimerInterval);
+    answerTimerInterval=setInterval(()=>{
+      const p=Math.max(0,1-(performance.now()-start)/totalMs);
+      answerTimerFill.style.width=(p*100)+'%';
+      if(p<=0) clearInterval(answerTimerInterval);
+    },50);
+  }else if(type==='reveal'){
+    answering=false;
+    buttonWrap.classList.add('disabled');
+    answerTimer.classList.remove('show');
+    clearInterval(answerTimerInterval);
+
+    const mine=mySlot==='A'?payload.correctA:payload.correctB;
+    const myTap=mySlot==='A'?payload.taps.A:payload.taps.B;
+    setTapCount(myTap);
+    battleStatus.textContent=mine?'CORRECT!':'MISSED IT';
+    battleStatus.className='battle-status '+(mine?'correct':'wrong');
+
+    document.getElementById('reveal-num').textContent=payload.count;
+    revealCard.classList.add('show');
+
+    myMisses=mySlot==='A'?payload.missesA:payload.missesB;
+    renderStrikes();
+  }else if(type==='gameover'){
+    answering=false;
+    buttonWrap.classList.add('disabled');
+    const won=payload.winner===mySlot;
+    const draw=!payload.winner;
+    battleStatus.textContent=draw?"IT'S A DRAW":(won?'YOU WON!':'YOU LOST');
+    battleStatus.className='battle-status '+(draw?'':(won?'correct':'wrong'));
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  TAP INPUT
+// ═══════════════════════════════════════════════════════
+buttonWrap.addEventListener('pointerdown',e=>{
+  if(!answering) return;
+  e.preventDefault();
+  setTapCount(tapCount+1);
+  socket.emit('ctrl_tap',{code:myCode,slot:mySlot});
+  tapCircle.classList.add('pulse');
+  clearTimeout(tapCircle._t);
+  tapCircle._t=setTimeout(()=>tapCircle.classList.remove('pulse'),150);
+  if(navigator.vibrate) navigator.vibrate(12);
+});
+
+setTapCount(0);
+</script>
+</body>
+</html>
