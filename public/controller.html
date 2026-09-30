@@ -85,6 +85,7 @@ html,body{
 .strike-dot{width:11px;height:11px;border-radius:4px;border:2px solid var(--border)}
 .strike-dot.used{border-color:var(--bad);background:rgba(255,93,93,.25)}
 
+.solo-hide{display:none !important}
 #conn-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--accentB);color:#04141f;text-align:center;font-size:.75rem;font-weight:700;padding:8px 0;display:none}
 </style>
 </head>
@@ -108,9 +109,9 @@ html,body{
 <div class="screen hidden" id="lobby-screen">
   <div class="slot-badge" id="my-slot-badge">Player A</div>
   <div class="sub" id="lobby-status">Waiting for other player...</div>
-  <div class="ready-indicator">
+  <div class="ready-indicator" id="ready-indicator">
     <div class="ri"><div class="ri-dot" id="dot-a"></div><span>A</span></div>
-    <div class="ri"><div class="ri-dot" id="dot-b"></div><span>B</span></div>
+    <div class="ri" id="ri-b"><div class="ri-dot" id="dot-b"></div><span>B</span></div>
   </div>
   <button class="btn" id="ready-btn">Ready Up</button>
 </div>
@@ -170,7 +171,7 @@ function setLitDashes(count){
 //  SOCKET
 // ═══════════════════════════════════════════════════════
 const socket=io({ transports:['websocket'] });
-let mySlot=null, myCode=null, gameStarted=false;
+let mySlot=null, myCode=null, gameStarted=false, gameMode='duel';
 
 const joinScreen=document.getElementById('join-screen');
 const lobbyScreen=document.getElementById('lobby-screen');
@@ -211,15 +212,18 @@ readyBtn.addEventListener('click',()=>{
   socket.emit('player_ready',{code:myCode});
 });
 
-socket.on('joined',({slot,code})=>{
+socket.on('joined',({slot,code,mode})=>{
   hideConnBanner();
   mySlot=slot;myCode=code;
+  gameMode=mode||'duel';
+  document.getElementById('ri-b').classList.toggle('solo-hide',gameMode==='solo');
   document.getElementById('my-slot-badge').textContent='Player '+slot;
   if(!gameStarted){
     isReady=false;
     readyBtn.textContent='Ready Up';
     readyBtn.classList.remove('done');
-    document.getElementById('lobby-status').textContent='Waiting for other player...';
+    document.getElementById('lobby-status').textContent=
+      gameMode==='solo' ? 'Ready whenever you are!' : 'Waiting for other player...';
     updateReadyDots({A:false,B:false});
     showScreen('lobby');
   }
@@ -227,7 +231,7 @@ socket.on('joined',({slot,code})=>{
 
 socket.on('lobby_update',data=>{
   updateReadyDots({A:data.A,B:data.B});
-  if(data.A&&data.B) document.getElementById('lobby-status').textContent='Both players aboard — ready up!';
+  if(gameMode==='duel'&&data.A&&data.B) document.getElementById('lobby-status').textContent='Both players aboard — ready up!';
 });
 function updateReadyDots(present){
   document.getElementById('dot-a').className='ri-dot'+(present.A?' on':'');
@@ -334,10 +338,15 @@ socket.on('host_event',({type,payload})=>{
   }else if(type==='gameover'){
     answering=false;
     buttonWrap.classList.add('disabled');
-    const won=payload.winner===mySlot;
-    const draw=!payload.winner;
-    battleStatus.textContent=draw?"IT'S A DRAW":(won?'YOU WON!':'YOU LOST');
-    battleStatus.className='battle-status '+(draw?'':(won?'correct':'wrong'));
+    if(payload.mode==='solo'){
+      battleStatus.textContent='GAME OVER — '+payload.correct+' CORRECT';
+      battleStatus.className='battle-status';
+    }else{
+      const won=payload.winner===mySlot;
+      const draw=!payload.winner;
+      battleStatus.textContent=draw?"IT'S A DRAW":(won?'YOU WON!':'YOU LOST');
+      battleStatus.className='battle-status '+(draw?'':(won?'correct':'wrong'));
+    }
   }
 });
 

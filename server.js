@@ -52,16 +52,19 @@ function broadcastLobby(code) {
 io.on('connection', (socket) => {
 
   // ── HOST: create a new game ──
-  socket.on('create_game', () => {
+  // mode: 'solo' (only slot A is used) or 'duel' (default, needs A + B)
+  socket.on('create_game', (data) => {
+    const mode = (data && data.mode === 'solo') ? 'solo' : 'duel';
     const code = genCode();
     rooms[code] = {
       hostSocketId: socket.id,
+      mode,
       players: { A: null, B: null },
       ready: { A: false, B: false },
       started: false
     };
     socket.data.hostCode = code;
-    socket.emit('game_created', { code });
+    socket.emit('game_created', { code, mode });
   });
 
   // ── CONTROLLER: join a game by code ──
@@ -72,7 +75,7 @@ io.on('connection', (socket) => {
 
     let slot = null;
     if (!room.players.A) slot = 'A';
-    else if (!room.players.B) slot = 'B';
+    else if (room.mode !== 'solo' && !room.players.B) slot = 'B';
     else { socket.emit('join_error', 'room full'); return; }
 
     room.players[slot] = socket.id;
@@ -80,7 +83,7 @@ io.on('connection', (socket) => {
     socket.data.slot = slot;
     socket.join(code);
 
-    socket.emit('joined', { slot, code });
+    socket.emit('joined', { slot, code, mode: room.mode });
     if (room.hostSocketId) io.to(room.hostSocketId).emit('player_joined', { slot, players: roomPresence(room) });
     broadcastLobby(code);
   });
@@ -93,7 +96,7 @@ io.on('connection', (socket) => {
     socket.data.code = code;
     socket.data.slot = slot;
     socket.join(code);
-    socket.emit('joined', { slot, code });
+    socket.emit('joined', { slot, code, mode: room.mode });
     broadcastLobby(code);
     if (room.started) socket.emit('game_start');
   });
@@ -107,7 +110,9 @@ io.on('connection', (socket) => {
     room.ready[slot] = true;
     broadcastLobby(code);
 
-    if (room.ready.A && room.ready.B && room.players.A && room.players.B && !room.started) {
+    const needed = room.mode === 'solo' ? ['A'] : ['A', 'B'];
+    const allReady = needed.every(s => room.players[s] && room.ready[s]);
+    if (allReady && !room.started) {
       room.started = true;
       io.to(code).emit('game_start');
       if (room.hostSocketId) io.to(room.hostSocketId).emit('game_start');

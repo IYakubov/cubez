@@ -71,6 +71,7 @@ canvas{display:block;position:absolute;top:0;left:0}
 .hrv-tag.correct{color:var(--good)}
 .hrv-tag.wrong{color:var(--bad)}
 .hrv-num{font-family:'Baloo 2',sans-serif;font-size:1.3rem;font-weight:800}
+.solo-hide{display:none !important}
 
 /* ── SCREENS ── */
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(10,18,32,.96);z-index:100;padding:20px}
@@ -78,6 +79,7 @@ canvas{display:block;position:absolute;top:0;left:0}
 .ov-tag{font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--cyan);background:var(--panel2);border:2px solid var(--border);border-radius:999px;padding:5px 16px;text-transform:uppercase}
 .screen-title{font-family:'Baloo 2',sans-serif;font-size:2.6rem;font-weight:800;color:var(--cyan);letter-spacing:.01em;text-align:center}
 .screen-sub{font-size:.85rem;color:var(--textdim);text-align:center;max-width:480px;line-height:1.6;font-weight:600}
+.btn-row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
 .net-btn{padding:16px 36px;background:var(--cyan);border:none;border-radius:20px;color:#04141f;font-family:'Baloo 2',sans-serif;font-size:1rem;letter-spacing:.02em;font-weight:700;cursor:pointer;box-shadow:0 6px 0 #1f7fa3;transition:transform .1s}
 .net-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #1f7fa3}
 .room-code{font-family:'Baloo 2',sans-serif;font-size:3rem;font-weight:800;letter-spacing:.2em;color:var(--cyan);padding:16px 32px;border:2px solid var(--border);border-radius:20px;background:var(--panel)}
@@ -109,7 +111,7 @@ canvas{display:block;position:absolute;top:0;left:0}
     <div class="game-title">Counting Clash</div>
     <div class="round-line" id="round-line">Round 1</div>
   </div>
-  <div class="tb-side right">
+  <div class="tb-side right" id="tb-side-b">
     <div class="tb-info rt">
       <div class="tb-name pBc">Player B</div>
       <div class="strikes strike-row rt" id="strikesB"></div>
@@ -127,7 +129,7 @@ canvas{display:block;position:absolute;top:0;left:0}
     <div class="hud-timerbar" id="hud-timerbar"><div class="hud-timerfill" id="hud-timerfill"></div></div>
     <div class="hud-tallies" id="hud-tallies">
       <div class="hud-tally"><div class="hud-tally-name pAc">PLAYER A</div><div class="hud-tally-num pAc" id="tally-a">0</div></div>
-      <div class="hud-tally"><div class="hud-tally-name pBc">PLAYER B</div><div class="hud-tally-num pBc" id="tally-b">0</div></div>
+      <div class="hud-tally" id="hud-tally-b"><div class="hud-tally-name pBc">PLAYER B</div><div class="hud-tally-num pBc" id="tally-b">0</div></div>
     </div>
     <div class="hud-reveal" id="hud-reveal">
       <div class="hud-reveal-sub">THE ANSWER WAS</div>
@@ -142,16 +144,19 @@ canvas{display:block;position:absolute;top:0;left:0}
 
   <!-- SCREEN 1: HOME -->
   <div class="screen" id="screen-home">
-    <div class="ov-tag">2 players</div>
+    <div class="ov-tag">Choose a mode</div>
     <div class="screen-title">Counting Clash</div>
-    <div class="screen-sub">Cubes fly in, hold for a moment, then vanish. Count them fast — each player taps their button on their phone to match the number. 3 wrong guesses and you're out!</div>
-    <button class="net-btn" id="btn-create">Create Game</button>
+    <div class="screen-sub">Cubes fly in from the right and out to the left in just 3 seconds, then vanish. Count them fast — tap your button to match the number. 3 wrong guesses and you're out!</div>
+    <div class="btn-row">
+      <button class="net-btn" id="btn-create-solo">1 Player</button>
+      <button class="net-btn" id="btn-create-duel">2 Players</button>
+    </div>
   </div>
 
   <!-- SCREEN 2: LOBBY -->
   <div class="screen hidden" id="screen-lobby">
-    <div class="ov-tag">Waiting for players</div>
-    <div class="screen-sub">Share this code — each player opens the controller on their phone and enters it:</div>
+    <div class="ov-tag" id="lobby-tag">Waiting for players</div>
+    <div class="screen-sub" id="lobby-sub">Share this code — each player opens the controller on their phone and enters it:</div>
     <div class="room-code" id="room-code-display">------</div>
     <div class="share-card">
       <div class="share-card-title">Join as controller</div>
@@ -160,15 +165,16 @@ canvas{display:block;position:absolute;top:0;left:0}
     </div>
     <div class="lobby-players">
       <div class="lp"><div class="lp-dot" id="dot-a"></div><span>Player A</span><span class="lp-status" id="status-a">Waiting...</span></div>
-      <div class="lp"><div class="lp-dot" id="dot-b"></div><span>Player B</span><span class="lp-status" id="status-b">Waiting...</span></div>
+      <div class="lp" id="lp-b"><div class="lp-dot" id="dot-b"></div><span>Player B</span><span class="lp-status" id="status-b">Waiting...</span></div>
     </div>
-    <div class="screen-sub">Waiting for both players to connect and press Ready...</div>
+    <div class="screen-sub" id="lobby-sub2">Waiting for both players to connect and press Ready...</div>
   </div>
 
   <!-- SCREEN 3: GAME OVER -->
   <div class="screen hidden" id="screen-gameover">
     <div class="ov-tag">Match over</div>
     <div id="final-title">Player A Wins!</div>
+    <div class="screen-sub" id="final-sub"></div>
     <button class="net-btn" id="btn-restart">Rematch</button>
   </div>
 </div>
@@ -188,10 +194,10 @@ window.addEventListener('resize',resize);
 // ═══════════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════
-const HOLD_MS=3000;
-const ENTER_DUR=480;
-const EXIT_DUR=420;
-const ANSWER_MS=5000;
+const SHOW_MS=3000;      // cubes are on screen for exactly this long (first cube in -> last cube out)
+const ENTER_DUR=650;     // one cube: right edge -> its spot
+const EXIT_DUR=650;      // one cube: its spot -> off the left edge
+const ANSWER_MS=5000;    // cubes are gone for this long while players tap
 const REVEAL_MS=2800;
 const NEXT_ROUND_GAP=550;
 const MAX_MISSES=3;
@@ -213,9 +219,18 @@ let round=null;   // {number,count,cubes,phase,phaseStart,taps:{A,B},showTotalDu
 let gameActive=false;
 let roundTimer=null;
 let lastTs=0;
+let gameMode='duel'; // 'solo' or 'duel'
 
 function newMatch(){
   match={ misses:{A:0,B:0}, score:{A:0,B:0} };
+}
+
+function applyModeUI(){
+  const solo=gameMode==='solo';
+  document.getElementById('tb-side-b').classList.toggle('solo-hide',solo);
+  document.getElementById('lp-b').classList.toggle('solo-hide',solo);
+  document.getElementById('hud-tally-b').classList.toggle('solo-hide',solo);
+  document.getElementById('hrv-b').classList.toggle('solo-hide',solo);
 }
 
 function shadeColor(hex,pct){
@@ -238,15 +253,19 @@ function layoutCubes(count){
     }while(tries<25 && positions.some(p=>Math.hypot(p.x-pos.x,p.y-pos.y)<size*0.7));
     positions.push(pos);
   }
-  const stagger=Math.min(35,300/count);
+  // stagger so the whole batch (first cube entering -> last cube gone) takes exactly SHOW_MS
+  const stagger=Math.min(45,700/count);
+  const hold=Math.max(0,SHOW_MS-ENTER_DUR-EXIT_DUR-(count-1)*stagger);
   return positions.map((p,i)=>({
     toX:p.x,toY:p.y,
-    fromX:AW+120+Math.random()*160,
-    fromY:p.y+(Math.random()-0.5)*60,
+    fromX:AW+size+40,          // start just off the RIGHT edge
+    outX:-size-40,             // leave just off the LEFT edge
     size,
     color:CUBE_PALETTE[i%CUBE_PALETTE.length],
     enterStart:i*stagger,
     enterEnd:i*stagger+ENTER_DUR,
+    exitStart:i*stagger+ENTER_DUR+hold,
+    exitEnd:i*stagger+ENTER_DUR+hold+EXIT_DUR,
     bobSeed:Math.random()*1000
   }));
 }
@@ -255,14 +274,11 @@ function startRound(){
   const r=rangeForRound(round?round.number+1:1);
   const count=randInt(r.min,r.max);
   const cubes=layoutCubes(count);
-  const enterSpan=(count-1)*Math.min(35,300/count)+ENTER_DUR;
-  const showTotalDur=enterSpan+HOLD_MS+EXIT_DUR+150;
+  const showTotalDur=SHOW_MS;
   round={
     number: round?round.number+1:1,
     count, cubes, showTotalDur,
     phase:'show', phaseStart:performance.now(),
-    exitStart:enterSpan+HOLD_MS,
-    exitEnd:enterSpan+HOLD_MS+EXIT_DUR,
     taps:{A:0,B:0}
   };
   document.getElementById('round-line').textContent='Round '+round.number;
@@ -297,32 +313,36 @@ function startRevealPhase(){
   setHud('tallies',false);
 
   const correctA=round.taps.A===round.count;
-  const correctB=round.taps.B===round.count;
+  const correctB=gameMode==='duel'&&round.taps.B===round.count;
   if(!correctA) match.misses.A++;
-  if(!correctB) match.misses.B++;
+  if(gameMode==='duel'&&!correctB) match.misses.B++;
   if(correctA) match.score.A++;
-  if(correctB) match.score.B++;
+  if(gameMode==='duel'&&correctB) match.score.B++;
   updateSidebars();
 
   document.getElementById('hud-reveal-num').textContent=round.count;
   document.getElementById('hrv-a-num').textContent=round.taps.A;
-  document.getElementById('hrv-b-num').textContent=round.taps.B;
-  const tagA=document.getElementById('hrv-a-tag'), tagB=document.getElementById('hrv-b-tag');
-  const boxA=document.getElementById('hrv-a'), boxB=document.getElementById('hrv-b');
+  const tagA=document.getElementById('hrv-a-tag'), boxA=document.getElementById('hrv-a');
   tagA.textContent=correctA?'CORRECT':'WRONG'; tagA.className='hrv-tag '+(correctA?'correct':'wrong');
   boxA.className='hrv '+(correctA?'correct':'wrong');
-  tagB.textContent=correctB?'CORRECT':'WRONG'; tagB.className='hrv-tag '+(correctB?'correct':'wrong');
-  boxB.className='hrv '+(correctB?'correct':'wrong');
 
   let outcome;
-  if(correctA&&correctB) outcome='Both nailed it!';
-  else if(correctA) outcome='Player A wins the round!';
-  else if(correctB) outcome='Player B wins the round!';
-  else outcome='Both missed it!';
+  if(gameMode==='solo'){
+    outcome=correctA?'Correct!':'Missed it!';
+  }else{
+    document.getElementById('hrv-b-num').textContent=round.taps.B;
+    const tagB=document.getElementById('hrv-b-tag'), boxB=document.getElementById('hrv-b');
+    tagB.textContent=correctB?'CORRECT':'WRONG'; tagB.className='hrv-tag '+(correctB?'correct':'wrong');
+    boxB.className='hrv '+(correctB?'correct':'wrong');
+    if(correctA&&correctB) outcome='Both nailed it!';
+    else if(correctA) outcome='Player A wins the round!';
+    else if(correctB) outcome='Player B wins the round!';
+    else outcome='Both missed it!';
+  }
   document.getElementById('hud-round-outcome').textContent=outcome;
   setHud('reveal',true);
 
-  emitHost('reveal',{count:round.count,taps:round.taps,correctA,correctB,missesA:match.misses.A,missesB:match.misses.B});
+  emitHost('reveal',{mode:gameMode,count:round.count,taps:round.taps,correctA,correctB,missesA:match.misses.A,missesB:match.misses.B});
 
   clearTimeout(roundTimer);
   roundTimer=setTimeout(()=>{
@@ -334,7 +354,19 @@ function startRevealPhase(){
 function endMatch(){
   gameActive=false;
   clearTimeout(roundTimer);
-  let winner=null, msg;
+  const title=document.getElementById('final-title');
+
+  if(gameMode==='solo'){
+    title.textContent='Game Over!';
+    title.style.color='var(--cyan)';
+    document.getElementById('final-sub').textContent=
+      'You got '+match.score.A+' correct across '+round.number+' round'+(round.number===1?'':'s')+'.';
+    emitHost('gameover',{mode:'solo',correct:match.score.A,rounds:round.number});
+    showScreen('screen-gameover');
+    return;
+  }
+
+  let winner=null;
   const aOut=match.misses.A>=MAX_MISSES, bOut=match.misses.B>=MAX_MISSES;
   if(aOut&&bOut){
     if(match.score.A>match.score.B) winner='A';
@@ -343,7 +375,6 @@ function endMatch(){
   } else if(aOut) winner='B';
   else winner='A';
 
-  const title=document.getElementById('final-title');
   if(winner){
     title.textContent='Player '+winner+' Wins!';
     title.style.color=winner==='A'?'var(--accentA)':'var(--accentB)';
@@ -351,7 +382,8 @@ function endMatch(){
     title.textContent="It's a Draw!";
     title.style.color='var(--cyan)';
   }
-  emitHost('gameover',{winner});
+  document.getElementById('final-sub').textContent='';
+  emitHost('gameover',{mode:'duel',winner});
   showScreen('screen-gameover');
 }
 
@@ -398,6 +430,8 @@ function renderStrikes(elId,misses){
 //  RENDER
 // ═══════════════════════════════════════════════════════
 function easeOutBack(t){ const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+function easeInCubic(t){ return t*t*t; }
 function easeInBack(t){ const c1=1.70158,c3=c1+1; return c3*t*t*t-c1*t*t; }
 function lerp(a,b,t){ return a+(b-a)*t; }
 
@@ -420,33 +454,23 @@ function drawCube(cx,cy,size,color){
 }
 
 function renderCubes(now){
-  if(!round) return;
+  // Cubes are ONLY drawn during the 'show' phase. During 'answer' and 'reveal'
+  // nothing is drawn, so the screen stays empty while players count.
+  if(!round||round.phase!=='show') return;
   const t=now-round.phaseStart;
   for(const cube of round.cubes){
-    let x,y,scale=1,alpha=1;
-    if(round.phase==='show'){
-      if(t<cube.enterStart){ continue; }
-      else if(t<cube.enterEnd){
-        const p=Math.max(0,Math.min(1,(t-cube.enterStart)/ENTER_DUR));
-        const e=easeOutBack(p);
-        x=lerp(cube.fromX,cube.toX,e); y=lerp(cube.fromY,cube.toY,e);
-        scale=lerp(0.5,1,Math.min(1,p*1.3));
-      }else if(t<round.exitStart){
-        x=cube.toX; y=cube.toY+Math.sin((now+cube.bobSeed)/260)*3;
-      }else if(t<round.exitEnd){
-        const p=Math.max(0,Math.min(1,(t-round.exitStart)/EXIT_DUR));
-        const e=easeInBack(p);
-        x=lerp(cube.toX,cube.fromX,Math.min(1,e)); y=lerp(cube.toY,cube.toY-30,Math.min(1,p));
-        scale=lerp(1,0.4,p);
-        alpha=1-p*0.7;
-      }else continue;
-    }else{
+    let x,y;
+    if(t<cube.enterStart||t>=cube.exitEnd) continue;
+    if(t<cube.enterEnd){
+      const p=(t-cube.enterStart)/ENTER_DUR;
+      x=lerp(cube.fromX,cube.toX,easeOutCubic(p)); y=cube.toY;
+    }else if(t<cube.exitStart){
       x=cube.toX; y=cube.toY+Math.sin((now+cube.bobSeed)/260)*3;
+    }else{
+      const p=(t-cube.exitStart)/EXIT_DUR;
+      x=lerp(cube.toX,cube.outX,easeInCubic(p)); y=cube.toY;
     }
-    ctx.save();
-    ctx.globalAlpha=alpha;
-    drawCube(x,y,cube.size*scale,cube.color);
-    ctx.restore();
+    drawCube(x,y,cube.size,cube.color);
   }
 }
 
@@ -500,16 +524,27 @@ function emitHost(type,payload){
   socket.emit('host_event',{code:myCode,type,payload});
 }
 
-document.getElementById('btn-create').addEventListener('click',()=>{ socket.emit('create_game'); });
+document.getElementById('btn-create-solo').addEventListener('click',()=>{ socket.emit('create_game',{mode:'solo'}); });
+document.getElementById('btn-create-duel').addEventListener('click',()=>{ socket.emit('create_game',{mode:'duel'}); });
 
-socket.on('game_created',({code})=>{
+socket.on('game_created',({code,mode})=>{
   myCode=code;
+  gameMode=mode||'duel';
+  applyModeUI();
   document.getElementById('room-code-display').textContent=code;
   const origin=window.location.origin;
   const joinUrl=origin+'/controller.html?code='+code;
   const qr='https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&qzone=1&color=04141f&bgcolor=ffffff&data='+encodeURIComponent(joinUrl);
   document.getElementById('join-link').textContent=joinUrl;
   document.getElementById('join-qr').src=qr;
+
+  if(gameMode==='solo'){
+    document.getElementById('lobby-tag').textContent='Waiting for player';
+    document.getElementById('lobby-sub2').textContent='Waiting for the player to connect and press Ready...';
+  }else{
+    document.getElementById('lobby-tag').textContent='Waiting for players';
+    document.getElementById('lobby-sub2').textContent='Waiting for both players to connect and press Ready...';
+  }
   showScreen('screen-lobby');
 });
 
@@ -533,6 +568,7 @@ socket.on('game_start',()=>{
   newMatch();
   round=null;
   updateSidebars();
+  applyModeUI();
   gameActive=true;
   hideAllScreens();
   startRound();
