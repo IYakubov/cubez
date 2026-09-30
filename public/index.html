@@ -54,11 +54,6 @@ canvas{display:block;position:absolute;top:0;left:0}
 .hud-timerbar{margin-top:10px;width:min(70vw,420px);height:10px;border-radius:6px;background:var(--panel2);border:1px solid var(--border);overflow:hidden;opacity:0;transition:opacity .25s}
 .hud-timerbar.show{opacity:1}
 .hud-timerfill{height:100%;width:100%;background:var(--cyan);border-radius:6px}
-.hud-tallies{margin-top:18px;display:flex;gap:40px;opacity:0;transition:opacity .25s}
-.hud-tallies.show{opacity:1}
-.hud-tally{display:flex;flex-direction:column;align-items:center;gap:2px}
-.hud-tally-name{font-size:.65rem;font-weight:700;letter-spacing:.03em}
-.hud-tally-num{font-family:'Baloo 2',sans-serif;font-size:2.6rem;font-weight:800}
 .hud-reveal{margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0;transition:opacity .3s}
 .hud-reveal.show{opacity:1}
 .hud-reveal-num{font-family:'Baloo 2',sans-serif;font-size:3.2rem;font-weight:800;color:var(--cyan)}
@@ -127,16 +122,12 @@ canvas{display:block;position:absolute;top:0;left:0}
   <div id="hud">
     <div class="hud-phase" id="hud-phase"></div>
     <div class="hud-timerbar" id="hud-timerbar"><div class="hud-timerfill" id="hud-timerfill"></div></div>
-    <div class="hud-tallies" id="hud-tallies">
-      <div class="hud-tally"><div class="hud-tally-name pAc">PLAYER A</div><div class="hud-tally-num pAc" id="tally-a">0</div></div>
-      <div class="hud-tally" id="hud-tally-b"><div class="hud-tally-name pBc">PLAYER B</div><div class="hud-tally-num pBc" id="tally-b">0</div></div>
-    </div>
     <div class="hud-reveal" id="hud-reveal">
       <div class="hud-reveal-sub">THE ANSWER WAS</div>
       <div class="hud-reveal-num" id="hud-reveal-num">0</div>
       <div class="hud-reveal-row">
-        <div class="hrv" id="hrv-a"><div class="hrv-tag" id="hrv-a-tag">CORRECT</div><div class="hrv-num pAc" id="hrv-a-num">0</div></div>
-        <div class="hrv" id="hrv-b"><div class="hrv-tag" id="hrv-b-tag">CORRECT</div><div class="hrv-num pBc" id="hrv-b-num">0</div></div>
+        <div class="hrv" id="hrv-a"><div class="hrv-tag" id="hrv-a-tag">CORRECT</div></div>
+        <div class="hrv" id="hrv-b"><div class="hrv-tag" id="hrv-b-tag">CORRECT</div></div>
       </div>
       <div class="hud-reveal-sub" id="hud-round-outcome"></div>
     </div>
@@ -194,17 +185,17 @@ window.addEventListener('resize',resize);
 // ═══════════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════
-const SHOW_MS=3000;      // cubes are on screen for exactly this long (first cube in -> last cube out)
+// How long the cubes stay on screen depends on how many there are:
+//   up to 10 cubes -> 3s, 11-20 -> 5s (21+ -> 7s, 31+ -> 9s ... if MAX_CUBES is ever raised)
+const SHOW_BASE_MS=3000;
+const SHOW_STEP_MS=2000;
+function showMsForCount(count){
+  return SHOW_BASE_MS+SHOW_STEP_MS*(Math.ceil(count/10)-1);
+}
 const ENTER_DUR=650;     // one cube: right edge -> its spot
 const EXIT_DUR=650;      // one cube: its spot -> off the left edge
-// Answer time depends on how many cubes there were:
-//   up to 10 cubes -> 3s, 11-20 -> 5s (and 21+ -> 7s, 31+ -> 9s ... if MAX_CUBES is ever raised)
-const ANSWER_BASE_MS=3000;
-const ANSWER_STEP_MS=2000;
+const ANSWER_MS=5000;    // cubes are gone for this long while players tap (always 5s)
 const MAX_CUBES=20;      // never more than this many cubes in a round
-function answerMsForCount(count){
-  return ANSWER_BASE_MS+ANSWER_STEP_MS*(Math.ceil(count/10)-1);
-}
 const REVEAL_MS=2800;
 const NEXT_ROUND_GAP=550;
 const MAX_MISSES=3;
@@ -236,11 +227,10 @@ function applyModeUI(){
   const solo=gameMode==='solo';
   document.getElementById('tb-side-b').classList.toggle('solo-hide',solo);
   document.getElementById('lp-b').classList.toggle('solo-hide',solo);
-  document.getElementById('hud-tally-b').classList.toggle('solo-hide',solo);
   document.getElementById('hrv-b').classList.toggle('solo-hide',solo);
 }
 
-function layoutCubes(count){
+function layoutCubes(count,showMs){
   // Big play area; cubes are dropped into a randomly-filled, jittered grid so they never overlap
   const stageW=AW*0.86, stageH=AH*0.74;
   const originX=(AW-stageW)/2, originY=AH*0.2;
@@ -258,9 +248,9 @@ function layoutCubes(count){
     x:originX+c*cellW+cellW/2+(Math.random()-0.5)*slackX*0.8,
     y:originY+r*cellH+cellH/2+(Math.random()-0.5)*slackY*0.8
   }));
-  // stagger so the whole batch (first cube entering -> last cube gone) takes exactly SHOW_MS
+  // stagger so the whole batch (first cube entering -> last cube gone) takes exactly showMs
   const stagger=Math.min(45,700/count);
-  const hold=Math.max(0,SHOW_MS-ENTER_DUR-EXIT_DUR-(count-1)*stagger);
+  const hold=Math.max(0,showMs-ENTER_DUR-EXIT_DUR-(count-1)*stagger);
   return positions.map((p,i)=>({
     toX:p.x,toY:p.y,
     fromX:AW+size+40,          // start just off the RIGHT edge
@@ -277,19 +267,18 @@ function layoutCubes(count){
 function startRound(){
   const r=rangeForRound(round?round.number+1:1);
   const count=randInt(r.min,r.max);
-  const cubes=layoutCubes(count);
-  const showTotalDur=SHOW_MS;
+  const showTotalDur=showMsForCount(count);
+  const cubes=layoutCubes(count,showTotalDur);
   round={
     number: round?round.number+1:1,
     count, cubes, showTotalDur,
-    answerMs:answerMsForCount(count),
+    answerMs:ANSWER_MS,
     phase:'show', phaseStart:performance.now(),
     taps:{A:0,B:0}
   };
   document.getElementById('round-line').textContent='Round '+round.number;
   setHud('phase','MEMORIZE!',true);
   setHud('timer',false);
-  setHud('tallies',false);
   setHud('reveal',false);
   emitHost('watch',{});
   clearTimeout(roundTimer);
@@ -303,8 +292,6 @@ function startAnswerPhase(){
   round.phaseStart=performance.now();
   setHud('phase','HOW MANY CUBES?  ('+(round.answerMs/1000)+'s)',true);
   setHud('timer',true);
-  setHud('tallies',true);
-  updateTallies();
   emitHost('answer',{seconds:round.answerMs/1000});
   clearTimeout(roundTimer);
   roundTimer=setTimeout(startRevealPhase,round.answerMs);
@@ -315,7 +302,6 @@ function startRevealPhase(){
   round.phase='reveal';
   setHud('phase','',false);
   setHud('timer',false);
-  setHud('tallies',false);
 
   const correctA=round.taps.A===round.count;
   const correctB=gameMode==='duel'&&round.taps.B===round.count;
@@ -326,7 +312,6 @@ function startRevealPhase(){
   updateSidebars();
 
   document.getElementById('hud-reveal-num').textContent=round.count;
-  document.getElementById('hrv-a-num').textContent=round.taps.A;
   const tagA=document.getElementById('hrv-a-tag'), boxA=document.getElementById('hrv-a');
   tagA.textContent=correctA?'CORRECT':'WRONG'; tagA.className='hrv-tag '+(correctA?'correct':'wrong');
   boxA.className='hrv '+(correctA?'correct':'wrong');
@@ -335,7 +320,6 @@ function startRevealPhase(){
   if(gameMode==='solo'){
     outcome=correctA?'Correct!':'Missed it!';
   }else{
-    document.getElementById('hrv-b-num').textContent=round.taps.B;
     const tagB=document.getElementById('hrv-b-tag'), boxB=document.getElementById('hrv-b');
     tagB.textContent=correctB?'CORRECT':'WRONG'; tagB.className='hrv-tag '+(correctB?'correct':'wrong');
     boxB.className='hrv '+(correctB?'correct':'wrong');
@@ -402,16 +386,9 @@ function setHud(which,arg1,arg2){
     el.classList.toggle('show',!!arg2&&!!arg1);
   }else if(which==='timer'){
     document.getElementById('hud-timerbar').classList.toggle('show',!!arg1);
-  }else if(which==='tallies'){
-    document.getElementById('hud-tallies').classList.toggle('show',!!arg1);
   }else if(which==='reveal'){
     document.getElementById('hud-reveal').classList.toggle('show',!!arg1);
   }
-}
-
-function updateTallies(){
-  document.getElementById('tally-a').textContent=round?round.taps.A:0;
-  document.getElementById('tally-b').textContent=round?round.taps.B:0;
 }
 
 function updateSidebars(){
@@ -621,7 +598,6 @@ socket.on('return_to_lobby',()=>{
   round=null;
   setHud('phase','',false);
   setHud('timer',false);
-  setHud('tallies',false);
   setHud('reveal',false);
   document.getElementById('round-line').textContent='Round 1';
   showScreen('screen-lobby');
@@ -630,8 +606,7 @@ socket.on('return_to_lobby',()=>{
 
 socket.on('ctrl_tap',({slot})=>{
   if(!gameActive||!round||round.phase!=='answer') return;
-  round.taps[slot]=(round.taps[slot]||0)+1;
-  updateTallies();
+  round.taps[slot]=(round.taps[slot]||0)+1;   // counted silently; only shown on the phone
 });
 
 socket.on('host_disconnected',()=>{});
