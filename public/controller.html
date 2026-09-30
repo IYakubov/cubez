@@ -351,6 +351,39 @@ socket.on('host_event',({type,payload})=>{
 });
 
 // ═══════════════════════════════════════════════════════
+//  TAP SOUND (Web Audio: low latency, overlaps on fast taps)
+// ═══════════════════════════════════════════════════════
+let audioCtx=null, tapBuffer=null, tapLoading=false;
+function initAudio(){
+  try{
+    if(!audioCtx){
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC) return;
+      audioCtx=new AC();
+    }
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    if(!tapBuffer&&!tapLoading){
+      tapLoading=true;
+      fetch('/sounds/tap.wav')
+        .then(r=>r.arrayBuffer())
+        .then(buf=>new Promise((res,rej)=>audioCtx.decodeAudioData(buf,res,rej)))
+        .then(b=>{ tapBuffer=b; })
+        .catch(()=>{ tapLoading=false; });
+    }
+  }catch(e){}
+}
+function playTapSound(){
+  if(!audioCtx||!tapBuffer) return;
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  const src=audioCtx.createBufferSource();
+  src.buffer=tapBuffer;
+  src.connect(audioCtx.destination);
+  src.start(0);
+}
+// browsers only allow audio after a user gesture, so unlock on the first touch/click
+['pointerdown','touchstart','click','keydown'].forEach(ev=>document.addEventListener(ev,initAudio,{passive:true}));
+
+// ═══════════════════════════════════════════════════════
 //  TAP INPUT
 // ═══════════════════════════════════════════════════════
 buttonWrap.addEventListener('pointerdown',e=>{
@@ -358,6 +391,7 @@ buttonWrap.addEventListener('pointerdown',e=>{
   e.preventDefault();
   setTapCount(tapCount+1);
   socket.emit('ctrl_tap',{code:myCode,slot:mySlot});
+  playTapSound();
   tapCircle.classList.add('pulse');
   clearTimeout(tapCircle._t);
   tapCircle._t=setTimeout(()=>tapCircle.classList.remove('pulse'),150);

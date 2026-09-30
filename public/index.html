@@ -197,15 +197,22 @@ window.addEventListener('resize',resize);
 const SHOW_MS=3000;      // cubes are on screen for exactly this long (first cube in -> last cube out)
 const ENTER_DUR=650;     // one cube: right edge -> its spot
 const EXIT_DUR=650;      // one cube: its spot -> off the left edge
-const ANSWER_MS=5000;    // cubes are gone for this long while players tap
+// Answer time depends on how many cubes there were:
+//   up to 10 cubes -> 3s, 11-20 -> 5s, 21-30 -> 7s, 31-40 -> 9s, ... (+2s per extra 10 cubes)
+const ANSWER_BASE_MS=3000;
+const ANSWER_STEP_MS=2000;
+function answerMsForCount(count){
+  return ANSWER_BASE_MS+ANSWER_STEP_MS*(Math.ceil(count/10)-1);
+}
 const REVEAL_MS=2800;
 const NEXT_ROUND_GAP=550;
 const MAX_MISSES=3;
 const CUBE_PALETTE=['#4fd1ff','#ff9f45','#8b6bff','#3ddc84','#ff5d8f','#ffd23c'];
 
 function rangeForRound(round){
-  const growth=Math.min(13,round-1);
-  const max=Math.min(18,5+growth);
+  // ramps up ~1.5 cubes per round, up to 40, so the longer answer windows (21+, 31+) actually come into play
+  const growth=Math.floor((round-1)*1.5);
+  const max=Math.min(40,5+growth);
   const min=Math.max(3,max-3);
   return {min,max};
 }
@@ -278,6 +285,7 @@ function startRound(){
   round={
     number: round?round.number+1:1,
     count, cubes, showTotalDur,
+    answerMs:answerMsForCount(count),
     phase:'show', phaseStart:performance.now(),
     taps:{A:0,B:0}
   };
@@ -300,9 +308,9 @@ function startAnswerPhase(){
   setHud('timer',true);
   setHud('tallies',true);
   updateTallies();
-  emitHost('answer',{seconds:ANSWER_MS/1000});
+  emitHost('answer',{seconds:round.answerMs/1000});
   clearTimeout(roundTimer);
-  roundTimer=setTimeout(startRevealPhase,ANSWER_MS);
+  roundTimer=setTimeout(startRevealPhase,round.answerMs);
 }
 
 function startRevealPhase(){
@@ -496,7 +504,7 @@ function loop(ts){
   render(ts);
   if(gameActive&&round&&round.phase==='answer'){
     const elapsed=performance.now()-round.phaseStart;
-    const remain=Math.max(0,1-elapsed/ANSWER_MS);
+    const remain=Math.max(0,1-elapsed/round.answerMs);
     document.getElementById('hud-timerfill').style.width=(remain*100)+'%';
   }
   requestAnimationFrame(loop);
