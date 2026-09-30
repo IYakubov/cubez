@@ -43,7 +43,7 @@ HOW A ROUND WORKS
    then exits to the left. The whole batch is on screen for 3 seconds.
 2. TAP TO COUNT! — the screen is empty and both phones get a countdown window
    that grows with the cube count: up to 10 cubes = 3s, 11-20 = 5s,
-   21-30 = 7s, 31-40 = 9s (+2s for every extra 10). Every tap plays a sound
+   (a round never has more than 20 cubes; MAX_CUBES in index.html). Every tap plays a sound
    on the phone (public/sounds/tap.wav). Tap the glowing
    button on your phone once per cube you counted. Each tap lights up
    another dash on the ring and updates the number in the middle.
