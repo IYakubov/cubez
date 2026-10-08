@@ -1,0 +1,18 @@
+{
+  "name": "counting-clash",
+  "version": "2.0.0",
+  "description": "COUNTING CLASH - 2 player counting reflex game. Cubes flash on screen, players tap to match the count.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.4"
+  }
+}

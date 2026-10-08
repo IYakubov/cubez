@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#cfcdc6">
+<title>Counting Clash — Controller</title>
+<style>
+@font-face{font-family:'Unbounded';src:url('/fonts/unbounded-latin-wght-normal.woff2') format('woff2-variations'),url('/fonts/unbounded-latin-wght-normal.woff2') format('woff2');font-weight:200 900;font-display:swap}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+:root{
+  --soil:#cfcdc6; --slab:#dddbd4; --paper:#ecebe6; --ink:#1b1b1a; --ink2:#55534e; --dim:#85837c; --line:#b9b7af;
+  --me:#1b1b1a; --navy:#1A4361;
+  --good:#4f6a48; --goodT:#bcc8b3; --bad:#7a3b33; --badT:#d6bdb6;
+}
+body.B{--me:#1A4361}
+html,body{height:100%;width:100%;background:var(--soil);color:var(--ink);font-family:'Unbounded',system-ui,sans-serif;overflow:hidden;touch-action:none;-webkit-touch-callout:none}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:28px 22px}
+.screen.hidden{display:none}
+.tag{font-size:.58rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--ink2)}
+.title{font-size:1.5rem;font-weight:800;letter-spacing:.02em;text-align:center;line-height:1.1}
+.sub{font-size:.7rem;font-weight:400;color:var(--ink2);text-align:center;max-width:300px;line-height:1.7}
+
+input{width:100%;max-width:280px;padding:16px;text-align:center;letter-spacing:.32em;background:var(--paper);border:1.5px solid var(--line);border-radius:12px;color:var(--ink);font-family:inherit;font-size:1.4rem;font-weight:700;outline:none;-webkit-user-select:text;user-select:text}
+input:focus{border-color:var(--ink)}
+.btn{width:100%;max-width:280px;padding:18px;border:none;border-radius:12px;background:var(--me);color:var(--paper);font-family:inherit;font-size:.82rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:transform .1s,background .2s}
+.btn:active{transform:scale(.97)}
+.btn.done{background:var(--goodT);color:var(--good);border:1.5px solid var(--good)}
+#err{font-size:.64rem;font-weight:600;color:var(--bad);min-height:1em;letter-spacing:.04em}
+
+/* lobby */
+.me-tag{width:96px;height:96px;border-radius:20px;background:var(--me);color:var(--paper);display:flex;align-items:center;justify-content:center;font-size:2.6rem;font-weight:800}
+.me-name{font-size:1rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--me)}
+.dots{display:flex;gap:10px}
+.dot{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--slab);font-size:.58rem;font-weight:600;letter-spacing:.12em;color:var(--dim)}
+.dot i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.dot.on{color:var(--ink)} .dot.on i{background:var(--ink)}
+#dot-B.on i{background:var(--navy)}
+.dot.rd i{background:var(--good)}
+
+/* play */
+#play{justify-content:space-between;padding:22px 22px 30px}
+.head{width:100%;display:flex;align-items:center;justify-content:space-between}
+.chip{display:flex;align-items:center;gap:8px;font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.chip b{width:24px;height:24px;border-radius:6px;background:var(--me);color:var(--paper);display:flex;align-items:center;justify-content:center;font-size:.72rem}
+.strikes{display:flex;gap:5px}
+.strike{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--line);background:var(--paper)}
+.strike.used{background:var(--bad);border-color:var(--bad)}
+.mid{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+.status{font-size:1.05rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-align:center;min-height:1.3em}
+.status.good{color:var(--good)} .status.bad{color:var(--bad)}
+.timer{width:min(64vw,260px);height:6px;border-radius:3px;background:var(--slab);overflow:hidden;opacity:0;transition:opacity .2s}
+.timer.show{opacity:1}
+.timer i{display:block;height:100%;width:100%;background:var(--me)}
+
+.pad{position:relative;width:min(76vw,46vh,300px);aspect-ratio:1;touch-action:none;transition:opacity .2s}
+.pad.off{opacity:.4;pointer-events:none}
+#ring{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.dash{fill:none;stroke:var(--line);stroke-width:7;stroke-linecap:round;transition:stroke .12s}
+.dash.lit{stroke:var(--me)}
+.knob{position:absolute;left:50%;top:50%;width:74%;height:74%;transform:translate(-50%,-50%);border-radius:50%;background:var(--paper);border:2px solid var(--me);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 var(--line);transition:transform .08s,box-shadow .08s,background .08s}
+.knob.hit{transform:translate(-50%,-50%) translateY(4px) scale(.97);box-shadow:0 2px 0 var(--line);background:var(--slab)}
+.num{font-size:clamp(3rem,16vw,4.6rem);font-weight:800;color:var(--me);letter-spacing:-.02em}
+.caption{font-size:.58rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);text-align:center;min-height:1.2em}
+.answer{font-size:.66rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);opacity:0;transition:opacity .25s}
+.answer.show{opacity:1}
+.answer b{font-size:1.1rem;color:var(--ink);margin-left:6px}
+
+/* mirrored menu */
+#menu{position:fixed;inset:0;background:var(--soil);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px 22px;z-index:20}
+#menu.hidden{display:none}
+#menu-items{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px}
+.mi{padding:20px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper);font-family:inherit;font-size:.8rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);transition:background .15s,color .15s}
+.mi.focus{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+#banner{position:fixed;top:0;left:0;right:0;z-index:99;background:var(--ink);color:var(--paper);text-align:center;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:10px 0;display:none}
+.solo-hide{display:none!important}
+</style>
+</head>
+<body>
+<div id="banner"></div>
+
+<!-- JOIN -->
+<div class="screen" id="join">
+  <div class="tag">Shared Couch</div>
+  <div class="title">COUNTING<br>CLASH</div>
+  <div class="sub">Scan the QR on the big screen, or type the room number shown in its corner.</div>
+  <input id="code" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000"/>
+  <button class="btn" id="join-btn">Connect</button>
+  <div id="err"></div>
+</div>
+
+<!-- LOBBY -->
+<div class="screen hidden" id="lobby">
+  <div class="me-tag" id="me-tag">A</div>
+  <div class="me-name" id="me-name">Player A</div>
+  <div class="sub" id="lobby-msg">Waiting for the other player…</div>
+  <div class="dots">
+    <div class="dot" id="dot-A"><i></i>A</div>
+    <div class="dot" id="dot-B"><i></i>B</div>
+  </div>
+  <button class="btn" id="ready-btn">Ready</button>
+</div>
+
+<!-- PLAY -->
+<div class="screen hidden" id="play">
+  <div class="head">
+    <div class="chip"><b id="chip-slot">A</b><span id="chip-name">Player A</span></div>
+    <div class="strikes" id="strikes"></div>
+  </div>
+  <div class="mid">
+    <div class="status" id="status">Get ready</div>
+    <div class="timer" id="timer"><i id="timer-fill"></i></div>
+  </div>
+  <div class="pad off" id="pad">
+    <svg id="ring" viewBox="0 0 240 240"></svg>
+    <div class="knob" id="knob"><div class="num" id="num">00</div></div>
+  </div>
+  <div class="mid">
+    <div class="caption" id="caption">Watch the big screen</div>
+    <div class="answer" id="answer">Answer<b id="answer-num">0</b></div>
+  </div>
+</div>
+
+<!-- MENU (mirrors the host) -->
+<div id="menu" class="hidden">
+  <div class="tag">Match over</div>
+  <div class="title" id="menu-title"></div>
+  <div class="sub" id="menu-result"></div>
+  <div id="menu-items"></div>
+</div>
+
+<!-- INFO -->
+<div class="screen hidden" id="info">
+  <div class="tag" id="info-tag">Disconnected</div>
+  <div class="title" id="info-title">Host left</div>
+  <div class="sub" id="info-sub">Scan the new QR code on the big screen to play again.</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+'use strict';
+// ── dashed ring ──
+const DASHES=24, GAP=0.38, ring=document.getElementById('ring'), dashEls=[];
+for(let i=0;i<DASHES;i++){
+  const seg=360/DASHES, a0=(i*seg-90)*Math.PI/180, a1=(i*seg-90+seg*(1-GAP))*Math.PI/180, r=112;
+  const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('d',`M ${120+r*Math.cos(a0)} ${120+r*Math.sin(a0)} A ${r} ${r} 0 0 1 ${120+r*Math.cos(a1)} ${120+r*Math.sin(a1)}`);
+  p.setAttribute('class','dash'); ring.appendChild(p); dashEls.push(p);
+}
+
+const $=id=>document.getElementById(id);
+const screens=['join','lobby','play','info'];
+function show(name){ screens.forEach(s=>$(s).classList.toggle('hidden',s!==name)); if(name!=='play') $('menu').classList.add('hidden'); }
+
+// ── identity: one phone = one slot ──
+function getClientId(){
+  let id=null;
+  try{ id=localStorage.getItem('cubez_client'); }catch(e){}
+  if(!id){ id='c'+Math.random().toString(36).slice(2)+Date.now().toString(36); try{ localStorage.setItem('cubez_client',id); }catch(e){} }
+  return id;
+}
+const clientId=getClientId();
+
+const socket=io({transports:['websocket']});
+let mySlot=null, myCode=null, mode='duel', started=false, dead=false;
+
+// ── join ──
+$('join-btn').addEventListener('click',()=>doJoin());
+$('code').addEventListener('keydown',e=>{ if(e.key==='Enter') doJoin(); });
+function doJoin(){
+  const code=$('code').value.trim();
+  if(!/^\d{6}$/.test(code)){ $('err').textContent='Enter the 6-digit room number'; return; }
+  $('err').textContent=''; myCode=code;
+  socket.emit('join_game',{code,clientId});
+}
+const urlCode=new URLSearchParams(location.search).get('code');
+if(urlCode&&/^\d{6}$/.test(urlCode)){
+  $('code').value=urlCode;
+  // scanner apps open a hidden preview first — only join once actually visible
+  const tryJoin=()=>{ if(document.visibilityState==='visible'&&!mySlot){ doJoin(); document.removeEventListener('visibilitychange',tryJoin); } };
+  if(document.visibilityState==='visible') doJoin(); else document.addEventListener('visibilitychange',tryJoin);
+}
+socket.on('join_error',msg=>{ $('err').textContent=msg; if(!mySlot) show('join'); });
+
+socket.on('joined',({slot,code,mode:m,started:st})=>{
+  hideBanner(); dead=false;
+  mySlot=slot; myCode=code; mode=m||'duel';
+  document.body.classList.toggle('B',slot==='B');
+  $('me-tag').textContent=slot; $('me-name').textContent='Player '+slot;
+  $('chip-slot').textContent=slot; $('chip-name').textContent='Player '+slot;
+  $('dot-B').classList.toggle('solo-hide',mode==='solo');
+  if(!st){ resetReady(); show('lobby'); }
+});
+
+// ── ready ──
+let isReady=false;
+function resetReady(){
+  isReady=false; $('ready-btn').textContent='Ready'; $('ready-btn').classList.remove('done');
+  $('lobby-msg').textContent=mode==='solo'?'Press Ready to start.':'Waiting for the other player…';
+}
+$('ready-btn').addEventListener('click',()=>{
+  if(isReady) return;
+  isReady=true; $('ready-btn').textContent='Ready ✓'; $('ready-btn').classList.add('done');
+  buzz(15); socket.emit('player_ready',{code:myCode});
+});
+socket.on('lobby_update',d=>{
+  ['A','B'].forEach(s=>{
+    const el=$('dot-'+s);
+    el.classList.toggle('on',!!d[s]);
+    el.classList.toggle('rd',!!d['ready'+s]);
+  });
+  if(mode==='duel'&&!isReady) $('lobby-msg').textContent=d.A&&d.B?'Both connected — press Ready.':'Waiting for the other player…';
+  if(mode==='duel'&&isReady) $('lobby-msg').textContent='Waiting for the other player to ready up…';
+});
+
+socket.on('game_start',()=>{ started=true; show('play'); if(!roundState) setIdle(); });
+socket.on('back_to_lobby',()=>{
+  started=false; answering=false; clearInterval(timerInt); roundState=null;
+  setCount(0); resetReady(); show('lobby');
+});
+
+// ── round state from host ──
+const pad=$('pad'), knob=$('knob'), statusEl=$('status'), caption=$('caption');
+let count=0, answering=false, misses=0, timerInt=null, roundState=null;
+function setCount(n){ count=n; $('num').textContent=String(n).padStart(2,'0'); dashEls.forEach((d,i)=>d.classList.toggle('lit',i<n)); }
+function setStatus(t,cls){ statusEl.textContent=t; statusEl.className='status'+(cls?' '+cls:''); }
+function renderStrikes(){ const el=$('strikes'); el.innerHTML=''; for(let i=0;i<3;i++){ const d=document.createElement('div'); d.className='strike'+(i<misses?' used':''); el.appendChild(d); } }
+function setIdle(){ setStatus('Get ready'); caption.textContent='Watch the big screen'; pad.classList.add('off'); renderStrikes(); }
+
+socket.on('host_event',({type,payload})=>{
+  payload=payload||{};
+  roundState=type;
+  if(type==='newmatch'){
+    misses=0; renderStrikes(); setCount(0); $('menu').classList.add('hidden'); show('play');
+    setStatus('Get ready'); caption.textContent='Watch the big screen'; $('answer').classList.remove('show'); pad.classList.add('off');
+  }else if(type==='watch'){
+    answering=false; setCount(0); pad.classList.add('off');
+    setStatus(payload.countdown?'Get ready':'Count the cubes');
+    caption.textContent='Watch the big screen';
+    $('timer').classList.remove('show'); $('answer').classList.remove('show'); clearInterval(timerInt);
+  }else if(type==='answer'){
+    answering=true; setCount(0); pad.classList.remove('off');
+    setStatus('Tap now'); caption.textContent='One tap per cube';
+    $('answer').classList.remove('show'); $('timer').classList.add('show');
+    const total=(payload.seconds||5)*1000, t0=performance.now();
+    clearInterval(timerInt);
+    timerInt=setInterval(()=>{ const p=Math.max(0,1-(performance.now()-t0)/total); $('timer-fill').style.width=(p*100)+'%'; if(p<=0) clearInterval(timerInt); },50);
+    buzz(25);
+  }else if(type==='reveal'){
+    answering=false; pad.classList.add('off'); $('timer').classList.remove('show'); clearInterval(timerInt);
+    const ok=mySlot==='A'?payload.correctA:payload.correctB;
+    setCount(payload.taps?payload.taps[mySlot]||0:count);
+    setStatus(ok?'Correct':'Wrong',ok?'good':'bad');
+    caption.textContent='';
+    $('answer-num').textContent=payload.count; $('answer').classList.add('show');
+    misses=mySlot==='A'?payload.missesA:payload.missesB; renderStrikes();
+    buzz(ok?[20]:[40,60,40]);
+  }else if(type==='gameover'){
+    answering=false; pad.classList.add('off'); clearInterval(timerInt);
+    if(payload.mode==='solo') $('menu-result').textContent=payload.correct+' correct · '+payload.rounds+' rounds';
+    else $('menu-result').textContent=!payload.winner?"It's a draw":payload.winner===mySlot?'You won':'You lost';
+  }
+});
+
+// ── mirrored menu: tap an item to choose it ──
+socket.on('host_ui',ui=>{
+  if(!ui||!ui.items){ $('menu').classList.add('hidden'); return; }
+  if(!started) return;
+  $('menu-title').textContent=ui.title||'';
+  const box=$('menu-items'); box.innerHTML='';
+  ui.items.forEach((label,i)=>{
+    const b=document.createElement('button');
+    b.className='mi'+(i===ui.focus?' focus':''); b.textContent=label;
+    b.addEventListener('click',()=>{ buzz(15); socket.emit('ctrl_menu',{action:'pick',index:i}); });
+    box.appendChild(b);
+  });
+  $('menu').classList.remove('hidden');
+});
+
+// ── tap input ──
+pad.addEventListener('pointerdown',e=>{
+  if(!answering) return;
+  e.preventDefault();
+  setCount(count+1);
+  socket.emit('ctrl_tap');
+  playTap();
+  knob.classList.add('hit'); clearTimeout(knob._t); knob._t=setTimeout(()=>knob.classList.remove('hit'),110);
+  buzz(10);
+});
+
+// ── connection ──
+function showBanner(m){ $('banner').textContent=m; $('banner').style.display='block'; }
+function hideBanner(){ $('banner').style.display='none'; }
+socket.on('disconnect',()=>{ if(mySlot&&!dead) showBanner('Connection lost — reconnecting…'); });
+socket.on('connect',()=>{ if(mySlot&&myCode&&!dead) socket.emit('rejoin_game',{code:myCode,slot:mySlot,clientId}); });
+socket.on('host_disconnected',()=>{
+  dead=true; mySlot=null; started=false; hideBanner();
+  $('info-tag').textContent='Disconnected'; $('info-title').textContent='Host left';
+  $('info-sub').textContent='Scan the new QR code on the big screen to play again.';
+  show('info');
+});
+socket.on('replaced',()=>{
+  dead=true; mySlot=null; hideBanner();
+  $('info-tag').textContent='Moved'; $('info-title').textContent='Opened elsewhere';
+  $('info-sub').textContent='This controller is now open in another tab. You can close this one.';
+  show('info');
+});
+setInterval(()=>socket.emit('ping_check',()=>{}),5000);
+
+// ── haptics + tap sound ──
+function buzz(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+let ac=null, tapBuf=null, loading=false;
+function initAudio(){
+  try{
+    if(!ac){ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; ac=new AC(); }
+    if(ac.state==='suspended') ac.resume();
+    if(!tapBuf&&!loading){
+      loading=true;
+      fetch('/sounds/tap.wav').then(r=>r.arrayBuffer()).then(b=>new Promise((res,rej)=>ac.decodeAudioData(b,res,rej))).then(b=>{tapBuf=b;}).catch(()=>{loading=false;});
+    }
+  }catch(e){}
+}
+function playTap(){ if(!ac||!tapBuf) return; if(ac.state==='suspended') ac.resume(); const s=ac.createBufferSource(); s.buffer=tapBuf; s.connect(ac.destination); s.start(0); }
+['pointerdown','touchstart','click','keydown'].forEach(ev=>document.addEventListener(ev,initAudio,{passive:true}));
+
+setCount(0); renderStrikes();
+</script>
+</body>
+</html>
