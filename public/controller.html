@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#cfcdc6">
 <title>Counting Clash — Controller</title>
 <style>
-@font-face{font-family:'Unbounded';src:url('/fonts/unbounded-latin-wght-normal.woff2') format('woff2-variations'),url('/fonts/unbounded-latin-wght-normal.woff2') format('woff2');font-weight:200 900;font-display:swap}
+@font-face{font-family:'Unbounded';src:url('fonts/unbounded-latin-wght-normal.woff2') format('woff2-variations'),url('fonts/unbounded-latin-wght-normal.woff2') format('woff2');font-weight:200 900;font-display:swap}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 :root{
   --soil:#cfcdc6; --slab:#dddbd4; --paper:#ecebe6; --ink:#1b1b1a; --ink2:#55534e; --dim:#85837c; --line:#b9b7af;
@@ -138,7 +138,7 @@ input:focus{border-color:var(--ink)}
   <div class="sub" id="info-sub">Scan the new QR code on the big screen to play again.</div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
+<script>window.__SC_BASE=location.pathname.replace(/[^/]*$/,'');</script><script src="socket.io/socket.io.js"></script>
 <script>
 'use strict';
 // ── dashed ring ──
@@ -163,7 +163,7 @@ function getClientId(){
 }
 const clientId=getClientId();
 
-const socket=io({transports:['websocket']});
+const socket=io({path:window.__SC_BASE+'socket.io',transports:['websocket']});
 let mySlot=null, myCode=null, mode='duel', started=false, dead=false;
 
 // ── join ──
@@ -318,7 +318,7 @@ function initAudio(){
     if(ac.state==='suspended') ac.resume();
     if(!tapBuf&&!loading){
       loading=true;
-      fetch('/sounds/tap.wav').then(r=>r.arrayBuffer()).then(b=>new Promise((res,rej)=>ac.decodeAudioData(b,res,rej))).then(b=>{tapBuf=b;}).catch(()=>{loading=false;});
+      fetch('sounds/tap.wav').then(r=>r.arrayBuffer()).then(b=>new Promise((res,rej)=>ac.decodeAudioData(b,res,rej))).then(b=>{tapBuf=b;}).catch(()=>{loading=false;});
     }
   }catch(e){}
 }

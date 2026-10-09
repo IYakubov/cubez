@@ -42,7 +42,8 @@ function buildOrigin(socket) {
     const port = (host.match(/:(\d+)$/) || [])[1] || PORT;
     if (ip) return 'http://' + ip + ':' + port;
   }
-  return proto + '://' + host;
+  const prefix = String(h['x-forwarded-prefix'] || '').split(',')[0].trim().replace(/\/+$/, '');
+  return proto + '://' + host + prefix;
 }
 
 // rooms[code] = { hostSocketId, mode, players:{A,B}, clientIds:{A,B}, ready:{A,B}, started }
