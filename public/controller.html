@@ -68,6 +68,42 @@ input:focus{border-color:var(--ink)}
 .answer b{font-size:1.1rem;color:var(--ink);margin-left:6px}
 
 /* mirrored menu */
+/* side count buttons — only shown in landscape */
+.side-btn{display:none;position:relative;font-family:inherit;border:2px solid var(--me);background:var(--paper);color:var(--me);border-radius:50%;aspect-ratio:1;align-items:center;justify-content:center;flex-direction:column;gap:6px;box-shadow:0 6px 0 var(--line);touch-action:none;cursor:pointer;transition:transform .08s,box-shadow .08s,background .08s,opacity .2s}
+.side-btn .plus{font-size:clamp(2rem,9vh,3.2rem);font-weight:800;letter-spacing:-.02em;line-height:1}
+.side-btn .lbl{font-size:.52rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.side-btn.hit{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 var(--line);background:var(--slab)}
+.side-btn.off{opacity:.4;pointer-events:none}
+
+@media (orientation:landscape){
+  #play{display:grid;grid-template-columns:1fr minmax(190px,30vw) 1fr;grid-template-rows:auto 1fr auto 1fr;
+        grid-template-areas:"head head head" "L top R" "L pad R" "L bot R";
+        column-gap:14px;row-gap:8px;align-items:center;justify-items:center;
+        padding:12px max(18px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+  #play.hidden{display:none}
+  #play .head{grid-area:head}
+  #mid-top{grid-area:top;align-self:end;gap:10px}
+  #mid-bot{grid-area:bot;align-self:start;gap:8px}
+  #play .pad{grid-area:pad;width:min(34vh,150px);pointer-events:none}
+  #play .knob{box-shadow:none}
+  #play .num{font-size:clamp(1.8rem,9vh,2.8rem)}
+  #play .status{font-size:.86rem}
+  #play .timer{width:100%;max-width:220px}
+  #play .caption{max-width:210px;line-height:1.7;letter-spacing:.14em}
+  #side-L{grid-area:L} #side-R{grid-area:R}
+  .side-btn{display:flex;width:min(100%,70vh)}
+}
+/* short landscape screens: tighten the other screens so they fit */
+@media (orientation:landscape) and (max-height:520px){
+  .screen{gap:10px;padding:14px 22px}
+  .title{font-size:1.15rem}
+  .me-tag{width:60px;height:60px;font-size:1.7rem;border-radius:14px}
+  input{padding:10px}
+  .btn{padding:13px}
+  #menu{gap:10px;padding:14px 22px}
+  .mi{padding:13px}
+}
+
 #menu{position:fixed;inset:0;background:var(--soil);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px 22px;z-index:20}
 #menu.hidden{display:none}
 #menu-items{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px}
@@ -109,7 +145,8 @@ input:focus{border-color:var(--ink)}
     <div class="chip"><b id="chip-slot">A</b><span id="chip-name">Player A</span></div>
     <div class="strikes" id="strikes"></div>
   </div>
-  <div class="mid">
+  <button class="side-btn off" id="side-L" aria-label="Count"><span class="plus">+1</span><span class="lbl">Tap</span></button>
+  <div class="mid" id="mid-top">
     <div class="status" id="status">Get ready</div>
     <div class="timer" id="timer"><i id="timer-fill"></i></div>
   </div>
@@ -117,10 +154,11 @@ input:focus{border-color:var(--ink)}
     <svg id="ring" viewBox="0 0 240 240"></svg>
     <div class="knob" id="knob"><div class="num" id="num">00</div></div>
   </div>
-  <div class="mid">
+  <div class="mid" id="mid-bot">
     <div class="caption" id="caption">Watch the big screen</div>
     <div class="answer" id="answer">Answer<b id="answer-num">0</b></div>
   </div>
+  <button class="side-btn off" id="side-R" aria-label="Count"><span class="plus">+1</span><span class="lbl">Tap</span></button>
 </div>
 
 <!-- MENU (mirrors the host) -->
@@ -227,38 +265,48 @@ let count=0, answering=false, misses=0, timerInt=null, roundState=null;
 function setCount(n){ count=n; $('num').textContent=String(n).padStart(2,'0'); dashEls.forEach((d,i)=>d.classList.toggle('lit',i<n)); }
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className='status'+(cls?' '+cls:''); }
 function renderStrikes(){ const el=$('strikes'); el.innerHTML=''; for(let i=0;i<3;i++){ const d=document.createElement('div'); d.className='strike'+(i<misses?' used':''); el.appendChild(d); } }
-function setIdle(){ setStatus('Get ready'); caption.textContent='Watch the big screen'; pad.classList.add('off'); renderStrikes(); }
+const sideBtns=[$('side-L'),$('side-R')];
+function setTap(on){ pad.classList.toggle('off',!on); sideBtns.forEach(b=>b.classList.toggle('off',!on)); }
+// landscape = two big buttons, portrait = one ring button
+const landMQ=window.matchMedia('(orientation: landscape)');
+const CAPTIONS={watch:{p:'Watch the big screen',l:'Watch the big screen'},
+                answer:{p:'One tap per cube',l:'Use both buttons to count faster'},
+                '':{p:'',l:''}};
+let captionKey='watch';
+function setCaption(k){ captionKey=k; caption.textContent=CAPTIONS[k][landMQ.matches?'l':'p']; }
+(landMQ.addEventListener?landMQ.addEventListener('change',()=>setCaption(captionKey)):landMQ.addListener(()=>setCaption(captionKey)));
+function setIdle(){ setStatus('Get ready'); setCaption('watch'); setTap(false); renderStrikes(); }
 
 socket.on('host_event',({type,payload})=>{
   payload=payload||{};
   roundState=type;
   if(type==='newmatch'){
     misses=0; renderStrikes(); setCount(0); $('menu').classList.add('hidden'); show('play');
-    setStatus('Get ready'); caption.textContent='Watch the big screen'; $('answer').classList.remove('show'); pad.classList.add('off');
+    setStatus('Get ready'); setCaption('watch'); $('answer').classList.remove('show'); setTap(false);
   }else if(type==='watch'){
-    answering=false; setCount(0); pad.classList.add('off');
+    answering=false; setCount(0); setTap(false);
     setStatus(payload.countdown?'Get ready':'Count the cubes');
-    caption.textContent='Watch the big screen';
+    setCaption('watch');
     $('timer').classList.remove('show'); $('answer').classList.remove('show'); clearInterval(timerInt);
   }else if(type==='answer'){
-    answering=true; setCount(0); pad.classList.remove('off');
-    setStatus('Tap now'); caption.textContent='One tap per cube';
+    answering=true; setCount(0); setTap(true);
+    setStatus('Tap now'); setCaption('answer');
     $('answer').classList.remove('show'); $('timer').classList.add('show');
     const total=(payload.seconds||5)*1000, t0=performance.now();
     clearInterval(timerInt);
     timerInt=setInterval(()=>{ const p=Math.max(0,1-(performance.now()-t0)/total); $('timer-fill').style.width=(p*100)+'%'; if(p<=0) clearInterval(timerInt); },50);
     buzz(25);
   }else if(type==='reveal'){
-    answering=false; pad.classList.add('off'); $('timer').classList.remove('show'); clearInterval(timerInt);
+    answering=false; setTap(false); $('timer').classList.remove('show'); clearInterval(timerInt);
     const ok=mySlot==='A'?payload.correctA:payload.correctB;
     setCount(payload.taps?payload.taps[mySlot]||0:count);
     setStatus(ok?'Correct':'Wrong',ok?'good':'bad');
-    caption.textContent='';
+    setCaption('');
     $('answer-num').textContent=payload.count; $('answer').classList.add('show');
     misses=mySlot==='A'?payload.missesA:payload.missesB; renderStrikes();
     buzz(ok?[20]:[40,60,40]);
   }else if(type==='gameover'){
-    answering=false; pad.classList.add('off'); clearInterval(timerInt);
+    answering=false; setTap(false); clearInterval(timerInt);
     if(payload.mode==='solo') $('menu-result').textContent=payload.correct+' correct · '+payload.rounds+' rounds';
     else $('menu-result').textContent=!payload.winner?"It's a draw":payload.winner===mySlot?'You won':'You lost';
   }
@@ -280,14 +328,19 @@ socket.on('host_ui',ui=>{
 });
 
 // ── tap input ──
-pad.addEventListener('pointerdown',e=>{
+function countTap(e,el){
   if(!answering) return;
   e.preventDefault();
   setCount(count+1);
   socket.emit('ctrl_tap');
   playTap();
-  knob.classList.add('hit'); clearTimeout(knob._t); knob._t=setTimeout(()=>knob.classList.remove('hit'),110);
+  el.classList.add('hit'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('hit'),110);
   buzz(10);
+}
+pad.addEventListener('pointerdown',e=>countTap(e,knob));
+sideBtns.forEach(b=>{
+  b.addEventListener('pointerdown',e=>countTap(e,b));
+  b.addEventListener('contextmenu',e=>e.preventDefault());
 });
 
 // ── connection ──
